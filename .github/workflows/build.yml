@@ -41,7 +41,7 @@ jobs:
             - name: Upload Windows artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: cheating-daddy-windows
+                  name: cheating-dev-windows
                   path: out/make/squirrel.windows/**/*
                   if-no-files-found: error
 
@@ -74,7 +74,7 @@ jobs:
             - name: Upload macOS artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: cheating-daddy-macos
+                  name: cheating-dev-macos
                   path: out/make/*.dmg
                   if-no-files-found: error
 
@@ -104,7 +104,7 @@ jobs:
             - name: Upload Linux artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: cheating-daddy-linux
+                  name: cheating-dev-linux
                   path: out/make/*.AppImage
                   if-no-files-found: error
 
