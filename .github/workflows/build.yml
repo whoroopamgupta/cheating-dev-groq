@@ -1,0 +1,110 @@
+name: Build & Release
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: build-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build-windows:
+        runs-on: windows-latest
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup NodeJS
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 'lts/*'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Run tests
+              run: npm test
+
+            - name: Build Electron app
+              run: npm run make
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Upload Windows artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: cheating-daddy-windows
+                  path: out/make/squirrel.windows/**/*
+                  if-no-files-found: error
+
+    build-macos:
+        runs-on: macos-latest
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup NodeJS
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 'lts/*'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Run tests
+              run: npm test
+
+            - name: Set executable permissions for SystemAudioDump
+              run: chmod +x src/assets/SystemAudioDump
+
+            - name: Build Electron app
+              run: npm run make
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Upload macOS artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: cheating-daddy-macos
+                  path: out/make/*.dmg
+                  if-no-files-found: error
+
+    build-linux:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Setup NodeJS
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 'lts/*'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Run tests
+              run: npm test
+
+            - name: Build Electron app
+              run: npm run make
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Upload Linux artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: cheating-daddy-linux
+                  path: out/make/*.AppImage
+                  if-no-files-found: error
+
