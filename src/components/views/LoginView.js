@@ -405,14 +405,20 @@ export class LoginView extends LitElement {
 
             const text = await response.text();
 
-            // Parse the JSON (handle non-standard JSON with unquoted keys)
+            // Parse the JSON (handle non-standard JSON with unquoted keys and trailing commas)
             let users;
             try {
                 // Try standard JSON parse first
                 users = JSON.parse(text);
             } catch (parseError) {
-                // If that fails, try to fix the JSON format (unquoted keys)
-                const fixedJson = text.replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3').replace(/:\s*"null"/g, ': null');
+                // If that fails, try to fix the JSON format
+                let fixedJson = text
+                    // Add quotes around unquoted keys
+                    .replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3')
+                    // Replace "null" string with null
+                    .replace(/:\s*"null"/g, ': null')
+                    // Remove trailing commas before ] or }
+                    .replace(/,(\s*[\]}])/g, '$1');
                 users = JSON.parse(fixedJson);
             }
 

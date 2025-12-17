@@ -187,6 +187,9 @@ export class CheatingDaddyApp extends LitElement {
         if (this.currentView !== 'login') {
             this.validateUserInBackground();
         }
+
+        // Validation interval reference (will be set in connectedCallback)
+        this._validationIntervalId = null;
     }
 
     connectedCallback() {
@@ -215,6 +218,17 @@ export class CheatingDaddyApp extends LitElement {
         // Add global keyboard event listener for Ctrl+G
         this.boundKeydownHandler = this.handleGlobalKeydown.bind(this);
         document.addEventListener('keydown', this.boundKeydownHandler);
+
+        // Set up periodic background validation (every 30 seconds)
+        // This ensures users are logged out promptly if their plan expires while app is running
+        this._validationIntervalId = setInterval(
+            () => {
+                if (this.currentView !== 'login') {
+                    this.validateUserInBackground();
+                }
+            },
+            30 * 1000
+        ); // 30 seconds
     }
 
     disconnectedCallback() {
@@ -230,6 +244,12 @@ export class CheatingDaddyApp extends LitElement {
         // Remove global keyboard event listener
         if (this.boundKeydownHandler) {
             document.removeEventListener('keydown', this.boundKeydownHandler);
+        }
+
+        // Clear the validation interval
+        if (this._validationIntervalId) {
+            clearInterval(this._validationIntervalId);
+            this._validationIntervalId = null;
         }
     }
 
@@ -640,12 +660,18 @@ export class CheatingDaddyApp extends LitElement {
 
             const text = await response.text();
 
-            // Parse the JSON (handle non-standard JSON with unquoted keys)
+            // Parse the JSON (handle non-standard JSON with unquoted keys and trailing commas)
             let users;
             try {
                 users = JSON.parse(text);
             } catch (parseError) {
-                const fixedJson = text.replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3').replace(/:\s*"null"/g, ': null');
+                let fixedJson = text
+                    // Add quotes around unquoted keys
+                    .replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3')
+                    // Replace "null" string with null
+                    .replace(/:\s*"null"/g, ': null')
+                    // Remove trailing commas before ] or }
+                    .replace(/,(\s*[\]}])/g, '$1');
                 users = JSON.parse(fixedJson);
             }
 
