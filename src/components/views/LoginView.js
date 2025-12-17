@@ -3,7 +3,11 @@ import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 export class LoginView extends LitElement {
     static styles = css`
         * {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family:
+                'Inter',
+                -apple-system,
+                BlinkMacSystemFont,
+                sans-serif;
             cursor: default;
             user-select: none;
             margin: 0;
@@ -170,9 +174,18 @@ export class LoginView extends LitElement {
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-6px); }
-            40%, 80% { transform: translateX(6px); }
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+            20%,
+            60% {
+                transform: translateX(-6px);
+            }
+            40%,
+            80% {
+                transform: translateX(6px);
+            }
         }
 
         .login-button {
@@ -220,7 +233,9 @@ export class LoginView extends LitElement {
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .error-message {
@@ -240,6 +255,67 @@ export class LoginView extends LitElement {
             width: 16px;
             height: 16px;
             flex-shrink: 0;
+        }
+
+        .logout-message {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #fbbf24;
+            position: relative;
+        }
+
+        .logout-message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .logout-message-header svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .logout-message-content {
+            line-height: 1.5;
+            color: #d4a017;
+        }
+
+        .logout-message-content a {
+            color: #fbbf24;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .logout-message-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: #fbbf24;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .logout-message-close:hover {
+            background: rgba(251, 191, 36, 0.2);
+        }
+
+        .logout-message-close svg {
+            width: 14px;
+            height: 14px;
         }
 
         .footer-text {
@@ -268,6 +344,8 @@ export class LoginView extends LitElement {
         errorMessage: { type: String },
         showError: { type: Boolean },
         onLoginSuccess: { type: Function },
+        logoutMessage: { type: String },
+        onClearLogoutMessage: { type: Function },
     };
 
     constructor() {
@@ -278,6 +356,8 @@ export class LoginView extends LitElement {
         this.errorMessage = '';
         this.showError = false;
         this.onLoginSuccess = () => {};
+        this.logoutMessage = '';
+        this.onClearLogoutMessage = () => {};
     }
 
     handleEmailInput(e) {
@@ -380,6 +460,25 @@ export class LoginView extends LitElement {
         }
     }
 
+    handleDismissLogoutMessage() {
+        this.logoutMessage = '';
+        if (this.onClearLogoutMessage) {
+            this.onClearLogoutMessage();
+        }
+        this.requestUpdate();
+    }
+
+    copyEmail(email) {
+        navigator.clipboard
+            .writeText(email)
+            .then(() => {
+                console.log('[Login] Email copied to clipboard:', email);
+            })
+            .catch(err => {
+                console.error('[Login] Failed to copy email:', err);
+            });
+    }
+
     async handleClose() {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
@@ -415,6 +514,33 @@ export class LoginView extends LitElement {
                             <div class="logo-subtitle">Enter your credentials to continue</div>
                         </div>
 
+                        ${this.logoutMessage
+                            ? html`
+                                  <div class="logout-message">
+                                      <button class="logout-message-close" @click=${this.handleDismissLogoutMessage} title="Dismiss">
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                                          </svg>
+                                      </button>
+                                      <div class="logout-message-header">
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                              <path
+                                                  d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                                              ></path>
+                                              <line x1="12" y1="9" x2="12" y2="13"></line>
+                                              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                          </svg>
+                                          <span>Plan Expired</span>
+                                      </div>
+                                      <div class="logout-message-content">
+                                          Your plan has ended. If this is a mistake, please contact
+                                          <a @click=${() => this.copyEmail('webdevarmyhq@gmail.com')}>webdevarmyhq@gmail.com</a>. To extend your plan,
+                                          <a @click=${this.handleGetAccess}>visit our website</a>.
+                                      </div>
+                                  </div>
+                              `
+                            : ''}
                         ${this.showError
                             ? html`
                                   <div class="error-message">

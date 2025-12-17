@@ -12,7 +12,11 @@ export class CheatingDaddyApp extends LitElement {
     static styles = css`
         * {
             box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family:
+                'Inter',
+                -apple-system,
+                BlinkMacSystemFont,
+                sans-serif;
             margin: 0px;
             padding: 0px;
             cursor: default;
@@ -73,7 +77,9 @@ export class CheatingDaddyApp extends LitElement {
         .view-container {
             opacity: 1;
             transform: translateY(0);
-            transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+            transition:
+                opacity 0.15s ease-out,
+                transform 0.15s ease-out;
             height: 100%;
         }
 
@@ -125,14 +131,16 @@ export class CheatingDaddyApp extends LitElement {
         // Rate limiting properties
         rateLimitEndTime: { type: Number },
         rateLimitSource: { type: String },
+        // Auth validation message (shown when user is logged out due to plan expiration)
+        logoutMessage: { type: String },
     };
 
     constructor() {
         super();
-        
+
         // Check if user is logged in first
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        
+
         if (!isLoggedIn) {
             // Not logged in - show login view
             this.currentView = 'login';
@@ -143,7 +151,7 @@ export class CheatingDaddyApp extends LitElement {
             // Logged in and onboarded
             this.currentView = 'main';
         }
-        
+
         this.statusText = '';
         this.startTime = null;
         this.isRecording = false;
@@ -169,8 +177,16 @@ export class CheatingDaddyApp extends LitElement {
         this.rateLimitSource = null;
         this._pendingRetryRequest = null; // Store the failed request to retry
 
+        // Auth validation message (for plan expiration)
+        this.logoutMessage = '';
+
         // Apply layout mode to document root
         this.updateLayoutMode();
+
+        // If user is logged in, validate their account in the background
+        if (this.currentView !== 'login') {
+            this.validateUserInBackground();
+        }
     }
 
     connectedCallback() {
@@ -210,7 +226,7 @@ export class CheatingDaddyApp extends LitElement {
             ipcRenderer.removeAllListeners('click-through-toggled');
             ipcRenderer.removeAllListeners('rate-limit-hit');
         }
-        
+
         // Remove global keyboard event listener
         if (this.boundKeydownHandler) {
             document.removeEventListener('keydown', this.boundKeydownHandler);
@@ -219,7 +235,7 @@ export class CheatingDaddyApp extends LitElement {
 
     setStatus(text) {
         this.statusText = text;
-        
+
         // Mark response as complete when we get certain status messages
         if (text.includes('Ready') || text.includes('Listening') || text.includes('Error')) {
             this._currentResponseIsComplete = true;
@@ -230,53 +246,55 @@ export class CheatingDaddyApp extends LitElement {
     handleRateLimitHit(retryAfterSeconds, source, pendingRequest = null) {
         // Calculate the new end time
         const newEndTime = Date.now() + retryAfterSeconds * 1000;
-        
+
         // Only update if this extends the cooldown or we don't have one yet
         if (!this.rateLimitEndTime || newEndTime > this.rateLimitEndTime) {
             this.rateLimitEndTime = newEndTime;
         }
-        
+
         this.rateLimitSource = source || 'API';
-        
+
         // Store the pending request to retry later (use the latest one)
         if (pendingRequest) {
             this._pendingRetryRequest = pendingRequest;
-            console.log(`[RateLimit] ${source} rate limited for ${retryAfterSeconds}s - will retry: "${pendingRequest.message?.substring(0, 50) || pendingRequest.text?.substring(0, 50) || 'request'}..."`);
+            console.log(
+                `[RateLimit] ${source} rate limited for ${retryAfterSeconds}s - will retry: "${pendingRequest.message?.substring(0, 50) || pendingRequest.text?.substring(0, 50) || 'request'}..."`
+            );
         } else {
             console.log(`[RateLimit] ${source} rate limited for ${retryAfterSeconds}s`);
         }
-        
+
         this.requestUpdate();
     }
 
     async clearRateLimit() {
         const pendingRequest = this._pendingRetryRequest;
-        
+
         console.log('[RateLimit] Cooldown expired, checking for pending request...');
         console.log('[RateLimit] Pending request:', pendingRequest ? pendingRequest.type : 'none');
-        
+
         this.rateLimitEndTime = null;
         this.rateLimitSource = null;
         this._pendingRetryRequest = null;
         this.requestUpdate();
-        
+
         // Auto-retry the pending request if there was one
         if (pendingRequest) {
             console.log(`[RateLimit] Retrying pending ${pendingRequest.type} request...`);
             this.setStatus('Retrying...');
             this._awaitingNewResponse = true;
-            
+
             try {
                 if (window.require) {
                     const { ipcRenderer } = window.require('electron');
                     let result;
-                    
+
                     if (pendingRequest.type === 'gemini-screenshot') {
                         // Retry Gemini screenshot request
                         console.log('[RateLimit] Invoking send-screenshot-with-text');
                         result = await ipcRenderer.invoke('send-screenshot-with-text', {
                             imageData: pendingRequest.imageData,
-                            text: pendingRequest.text
+                            text: pendingRequest.text,
                         });
                     } else if (pendingRequest.type === 'gemini-text') {
                         // Retry Gemini text-only request
@@ -287,10 +305,10 @@ export class CheatingDaddyApp extends LitElement {
                         console.log('[RateLimit] Invoking groq-generate-response for:', pendingRequest.message?.substring(0, 50));
                         result = await ipcRenderer.invoke('groq-generate-response', {
                             message: pendingRequest.message,
-                            imageBase64: pendingRequest.imageBase64
+                            imageBase64: pendingRequest.imageBase64,
                         });
                     }
-                    
+
                     console.log('[RateLimit] Retry invoke result:', result);
                 }
             } catch (error) {
@@ -345,7 +363,6 @@ export class CheatingDaddyApp extends LitElement {
         this.currentView = 'help';
         this.requestUpdate();
     }
-
 
     handleAdvancedClick() {
         this.currentView = 'advanced';
@@ -439,7 +456,7 @@ export class CheatingDaddyApp extends LitElement {
             await ipcRenderer.invoke('groq-set-llama-config', {
                 profile: this.selectedProfile,
                 systemPrompt: systemPrompt,
-                model: selectedGroqModel
+                model: selectedGroqModel,
             });
             console.log(`[GROQ] Llama config set - Profile: ${this.selectedProfile}, Model: ${selectedGroqModel}`);
         }
@@ -475,14 +492,12 @@ export class CheatingDaddyApp extends LitElement {
             const { ipcRenderer } = window.require('electron');
             // Open different URLs based on current profile
             const isExamMode = this.selectedProfile === 'exam';
-            const url = isExamMode
-                ? 'https://www.cheatingdev.in/gemini-api-key'
-                : 'https://www.cheatingdev.in/groq-api-key';
+            const url = isExamMode ? 'https://www.cheatingdev.in/gemini-api-key' : 'https://www.cheatingdev.in/groq-api-key';
             await ipcRenderer.invoke('open-external', url);
         }
     }
 
-        handleClearAndRestart() {
+    handleClearAndRestart() {
         // Clear the current session and responses
         this.responses = [];
         this.currentResponseIndex = -1;
@@ -509,9 +524,7 @@ export class CheatingDaddyApp extends LitElement {
     handleGlobalKeydown(e) {
         // Handle Ctrl+Alt+R (or Cmd+Option+R on Mac) for clearing and restarting session
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-        const isClearShortcut = isMac
-            ? e.metaKey && e.altKey && e.key === 'r'
-            : e.ctrlKey && e.altKey && e.key === 'r';
+        const isClearShortcut = isMac ? e.metaKey && e.altKey && e.key === 'r' : e.ctrlKey && e.altKey && e.key === 'r';
 
         if (isClearShortcut) {
             e.preventDefault();
@@ -598,6 +611,70 @@ export class CheatingDaddyApp extends LitElement {
         this.requestUpdate();
     }
 
+    // Background validation of user account
+    async validateUserInBackground() {
+        try {
+            const loggedInUserStr = localStorage.getItem('loggedInUser');
+            if (!loggedInUserStr) {
+                console.log('[Auth] No logged in user found, skipping validation');
+                return;
+            }
+
+            const loggedInUser = JSON.parse(loggedInUserStr);
+            const userEmail = loggedInUser.email;
+
+            if (!userEmail) {
+                console.log('[Auth] No email found for logged in user, skipping validation');
+                return;
+            }
+
+            console.log('[Auth] Validating user in background:', userEmail);
+
+            // Fetch the current user list from remote
+            const response = await fetch('https://raw.githubusercontent.com/catwithbatman-del/codeindev-emails/refs/heads/main/emails.json');
+
+            if (!response.ok) {
+                console.warn('[Auth] Failed to fetch user list for validation, allowing user to continue');
+                return; // Don't log out user if we can't reach the server
+            }
+
+            const text = await response.text();
+
+            // Parse the JSON (handle non-standard JSON with unquoted keys)
+            let users;
+            try {
+                users = JSON.parse(text);
+            } catch (parseError) {
+                const fixedJson = text.replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3').replace(/:\s*"null"/g, ': null');
+                users = JSON.parse(fixedJson);
+            }
+
+            // Check if user still exists in the list
+            const userExists = users.some(u => u.userEmail.toLowerCase() === userEmail.toLowerCase());
+
+            if (!userExists) {
+                console.log('[Auth] User no longer exists in database, logging out:', userEmail);
+
+                // Set the logout message before navigating to login
+                this.logoutMessage =
+                    'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
+
+                // Clear login state
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('loggedInUser');
+
+                // Navigate to login view
+                this.currentView = 'login';
+                this.requestUpdate();
+            } else {
+                console.log('[Auth] User validation successful:', userEmail);
+            }
+        } catch (error) {
+            console.error('[Auth] Error validating user:', error);
+            // Don't log out user on network errors - allow them to continue
+        }
+    }
+
     // Onboarding event handlers
     handleOnboardingComplete() {
         this.currentView = 'main';
@@ -649,7 +726,14 @@ export class CheatingDaddyApp extends LitElement {
         switch (this.currentView) {
             case 'login':
                 return html`
-                    <login-view .onLoginSuccess=${(user) => this.handleLoginSuccess(user)}></login-view>
+                    <login-view
+                        .onLoginSuccess=${user => this.handleLoginSuccess(user)}
+                        .logoutMessage=${this.logoutMessage}
+                        .onClearLogoutMessage=${() => {
+                            this.logoutMessage = '';
+                            this.requestUpdate();
+                        }}
+                    ></login-view>
                 `;
 
             case 'onboarding':
@@ -718,9 +802,13 @@ export class CheatingDaddyApp extends LitElement {
 
     render() {
         const mainContentClass = `main-content ${
-            this.currentView === 'assistant' ? 'assistant-view' : 
-            this.currentView === 'onboarding' ? 'onboarding-view' : 
-            this.currentView === 'login' ? 'login-view' : 'with-border'
+            this.currentView === 'assistant'
+                ? 'assistant-view'
+                : this.currentView === 'onboarding'
+                  ? 'onboarding-view'
+                  : this.currentView === 'login'
+                    ? 'login-view'
+                    : 'with-border'
         }`;
 
         // Hide header on login view
@@ -729,27 +817,29 @@ export class CheatingDaddyApp extends LitElement {
         return html`
             <div class="window-container">
                 <div class="container">
-                    ${showHeader ? html`
-                        <app-header
-                            .currentView=${this.currentView}
-                            .statusText=${this.statusText}
-                            .startTime=${this.startTime}
-                            .currentMode=${this.currentMode}
-                            .currentModel=${this.currentModel}
-                            .advancedMode=${this.advancedMode}
-                            .rateLimitEndTime=${this.rateLimitEndTime}
-                            .rateLimitSource=${this.rateLimitSource}
-                            .onCustomizeClick=${() => this.handleCustomizeClick()}
-                            .onHelpClick=${() => this.handleHelpClick()}
-                            .onAdvancedClick=${() => this.handleAdvancedClick()}
-                            .onCloseClick=${() => this.handleClose()}
-                            .onBackClick=${() => this.handleBackClick()}
-                            .onHideToggleClick=${() => this.handleHideToggle()}
-                            .onRestartClick=${() => this.handleClearAndRestart()}
-                            .onRateLimitExpired=${() => this.clearRateLimit()}
-                            ?isClickThrough=${this._isClickThrough}
-                        ></app-header>
-                    ` : ''}
+                    ${showHeader
+                        ? html`
+                              <app-header
+                                  .currentView=${this.currentView}
+                                  .statusText=${this.statusText}
+                                  .startTime=${this.startTime}
+                                  .currentMode=${this.currentMode}
+                                  .currentModel=${this.currentModel}
+                                  .advancedMode=${this.advancedMode}
+                                  .rateLimitEndTime=${this.rateLimitEndTime}
+                                  .rateLimitSource=${this.rateLimitSource}
+                                  .onCustomizeClick=${() => this.handleCustomizeClick()}
+                                  .onHelpClick=${() => this.handleHelpClick()}
+                                  .onAdvancedClick=${() => this.handleAdvancedClick()}
+                                  .onCloseClick=${() => this.handleClose()}
+                                  .onBackClick=${() => this.handleBackClick()}
+                                  .onHideToggleClick=${() => this.handleHideToggle()}
+                                  .onRestartClick=${() => this.handleClearAndRestart()}
+                                  .onRateLimitExpired=${() => this.clearRateLimit()}
+                                  ?isClickThrough=${this._isClickThrough}
+                              ></app-header>
+                          `
+                        : ''}
                     <div class="${mainContentClass}">
                         <div class="view-container">${this.renderCurrentView()}</div>
                     </div>
