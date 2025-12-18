@@ -203,8 +203,8 @@ export class MainView extends LitElement {
         this.showApiKeyError = false;
         this.onClearAndRestart = () => {};
         this.boundKeydownHandler = this.handleKeydown.bind(this);
-        // Load selected profile from localStorage
-        this.selectedProfile = localStorage.getItem('selectedProfile') || 'exam';
+        // Load selected profile from localStorage (default to interview on first run)
+        this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
     }
 
     connectedCallback() {
@@ -223,7 +223,7 @@ export class MainView extends LitElement {
 
         // Listen for profile changes from settings
         this.profileChangeHandler = () => {
-            const newProfile = localStorage.getItem('selectedProfile') || 'exam';
+            const newProfile = localStorage.getItem('selectedProfile') || 'interview';
             if (newProfile !== this.selectedProfile) {
                 this.selectedProfile = newProfile;
                 this.requestUpdate();
@@ -233,7 +233,7 @@ export class MainView extends LitElement {
 
         // Also check periodically for profile changes (in case storage event doesn't fire)
         this.profileCheckInterval = setInterval(() => {
-            const newProfile = localStorage.getItem('selectedProfile') || 'exam';
+            const newProfile = localStorage.getItem('selectedProfile') || 'interview';
             if (newProfile !== this.selectedProfile) {
                 this.selectedProfile = newProfile;
                 this.requestUpdate();
@@ -436,9 +436,7 @@ export class MainView extends LitElement {
                 dont have an api key?
                 <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span>
             </p>
-            <p class="shortcut-hint">
-                Press <strong>Ctrl+Alt+R</strong> to clear session and automatically restart
-            </p>
+            <p class="shortcut-hint">Press <strong>Ctrl+Alt+R</strong> to clear session and automatically restart</p>
 
             <div class="footer-actions">
                 <span class="user-email">Signed in as <strong>${this.getLoggedInEmail()}</strong></span>

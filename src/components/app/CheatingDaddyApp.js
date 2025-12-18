@@ -156,7 +156,8 @@ export class CheatingDaddyApp extends LitElement {
         this.startTime = null;
         this.isRecording = false;
         this.sessionActive = false;
-        this.selectedProfile = localStorage.getItem('selectedProfile') || 'exam';
+        // Default to interview profile on first run (if nothing is stored yet)
+        this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
         this.selectedLanguage = localStorage.getItem('selectedLanguage') || 'en-US';
         this.selectedScreenshotInterval = localStorage.getItem('selectedScreenshotInterval') || '5';
         this.selectedImageQuality = localStorage.getItem('selectedImageQuality') || 'high';
@@ -221,14 +222,11 @@ export class CheatingDaddyApp extends LitElement {
 
         // Set up periodic background validation (every 30 seconds)
         // This ensures users are logged out promptly if their plan expires while app is running
-        this._validationIntervalId = setInterval(
-            () => {
-                if (this.currentView !== 'login') {
-                    this.validateUserInBackground();
-                }
-            },
-            30 * 1000
-        ); // 30 seconds
+        this._validationIntervalId = setInterval(() => {
+            if (this.currentView !== 'login') {
+                this.validateUserInBackground();
+            }
+        }, 30 * 1000); // 30 seconds
     }
 
     disconnectedCallback() {
