@@ -1204,7 +1204,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
             await geminiSessionRef.current.sendRealtimeInput({ text: text.trim() });
             return { success: true };
         } catch (error) {
-            console.error('Error sending text:', error);
+            console.error('Error sending text :', error);
             return { success: false, error: error.message };
         }
     });
