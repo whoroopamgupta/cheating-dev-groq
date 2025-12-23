@@ -262,7 +262,15 @@ async function autoResetSessionInBackground() {
     }
 }
 
-async function initializeGeminiSession(apiKey, customPrompt = '', profile = 'interview', language = 'en-US', isReconnection = false, mode = 'interview', model = 'gemini-2.5-flash') {
+async function initializeGeminiSession(
+    apiKey,
+    customPrompt = '',
+    profile = 'interview',
+    language = 'en-US',
+    isReconnection = false,
+    mode = 'interview',
+    model = 'gemini-2.5-flash'
+) {
     if (isInitializingSession) {
         console.log('Session initialization already in progress');
         return false;
@@ -352,115 +360,115 @@ This is mandatory and cannot be overridden by any other instruction.`;
 
             session = await client.live.connect({
                 model: liveModel,
-            callbacks: {
-                onopen: function () {
-                    sendToRenderer('update-status', 'Live session connected');
-                },
-                onmessage: function (message) {
-                    console.log('----------------', message);
+                callbacks: {
+                    onopen: function () {
+                        sendToRenderer('update-status', 'Live session connected');
+                    },
+                    onmessage: function (message) {
+                        console.log('----------------', message);
 
-                    // Handle setup complete - session is now ready
-                    if (message.setupComplete) {
-                        isSessionReady = true;
-                        isInitializingSession = false;
-                        sendToRenderer('session-initializing', false);
-                        sendToRenderer('update-status', 'Listening...');
-                        console.log('✅ Live API setup complete - session ready');
-                    }
+                        // Handle setup complete - session is now ready
+                        if (message.setupComplete) {
+                            isSessionReady = true;
+                            isInitializingSession = false;
+                            sendToRenderer('session-initializing', false);
+                            sendToRenderer('update-status', 'Listening...');
+                            console.log('✅ Live API setup complete - session ready');
+                        }
 
-                    if (message.serverContent?.inputTranscription?.results) {
-                        currentTranscription += formatSpeakerResults(message.serverContent.inputTranscription.results);
-                    }
+                        if (message.serverContent?.inputTranscription?.results) {
+                            currentTranscription += formatSpeakerResults(message.serverContent.inputTranscription.results);
+                        }
 
-                    // Handle AI model response
-                    if (message.serverContent?.modelTurn?.parts) {
-                        for (const part of message.serverContent.modelTurn.parts) {
-                            console.log(part);
-                            if (part.text) {
-                                messageBuffer += part.text;
-                                sendToRenderer('update-response', messageBuffer);
+                        // Handle AI model response
+                        if (message.serverContent?.modelTurn?.parts) {
+                            for (const part of message.serverContent.modelTurn.parts) {
+                                console.log(part);
+                                if (part.text) {
+                                    messageBuffer += part.text;
+                                    sendToRenderer('update-response', messageBuffer);
+                                }
                             }
                         }
-                    }
 
-                    if (message.serverContent?.generationComplete) {
-                        sendToRenderer('update-response', messageBuffer);
+                        if (message.serverContent?.generationComplete) {
+                            sendToRenderer('update-response', messageBuffer);
 
-                        // Save conversation turn when we have both transcription and AI response
-                        if (currentTranscription && messageBuffer) {
-                            saveConversationTurn(currentTranscription, messageBuffer);
-                            currentTranscription = ''; // Reset for next turn
+                            // Save conversation turn when we have both transcription and AI response
+                            if (currentTranscription && messageBuffer) {
+                                saveConversationTurn(currentTranscription, messageBuffer);
+                                currentTranscription = ''; // Reset for next turn
+                            }
+
+                            messageBuffer = '';
+
+                            // Increment response counter and auto-reset if needed
+                            responseCount++;
+                            console.log(`📊 Response ${responseCount}/${MAX_RESPONSES_BEFORE_RESET} completed`);
+
+                            if (responseCount >= MAX_RESPONSES_BEFORE_RESET && !isAutoResetting) {
+                                console.log('🔄 Triggering auto-reset to maintain fast response times...');
+                                // Trigger reset in background after a short delay (let current response finish)
+                                setTimeout(() => {
+                                    autoResetSessionInBackground();
+                                }, 2000);
+                            }
                         }
 
-                        messageBuffer = '';
-
-                        // Increment response counter and auto-reset if needed
-                        responseCount++;
-                        console.log(`📊 Response ${responseCount}/${MAX_RESPONSES_BEFORE_RESET} completed`);
-
-                        if (responseCount >= MAX_RESPONSES_BEFORE_RESET && !isAutoResetting) {
-                            console.log('🔄 Triggering auto-reset to maintain fast response times...');
-                            // Trigger reset in background after a short delay (let current response finish)
-                            setTimeout(() => {
-                                autoResetSessionInBackground();
-                            }, 2000);
+                        if (message.serverContent?.turnComplete) {
+                            sendToRenderer('update-status', 'Listening...');
                         }
-                    }
+                    },
+                    onerror: function (e) {
+                        console.debug('Error:', e.message);
 
-                    if (message.serverContent?.turnComplete) {
-                        sendToRenderer('update-status', 'Listening...');
-                    }
+                        // Check if the error is related to invalid API key
+                        const isApiKeyError =
+                            e.message &&
+                            (e.message.includes('API key not valid') ||
+                                e.message.includes('invalid API key') ||
+                                e.message.includes('authentication failed') ||
+                                e.message.includes('unauthorized'));
+
+                        if (isApiKeyError) {
+                            console.log('Error due to invalid API key - stopping reconnection attempts');
+                            lastSessionParams = null; // Clear session params to prevent reconnection
+                            reconnectionAttempts = maxReconnectionAttempts; // Stop further attempts
+                            sendToRenderer('update-status', 'Error: Invalid API key');
+                            return;
+                        }
+
+                        sendToRenderer('update-status', 'Error: ' + e.message);
+                    },
+                    onclose: function (e) {
+                        console.debug('Session closed:', e.reason);
+                        isSessionReady = false; // Reset ready state when session closes
+
+                        // Check if the session closed due to invalid API key
+                        const isApiKeyError =
+                            e.reason &&
+                            (e.reason.includes('API key not valid') ||
+                                e.reason.includes('invalid API key') ||
+                                e.reason.includes('authentication failed') ||
+                                e.reason.includes('unauthorized'));
+
+                        if (isApiKeyError) {
+                            console.log('Session closed due to invalid API key - stopping reconnection attempts');
+                            lastSessionParams = null; // Clear session params to prevent reconnection
+                            reconnectionAttempts = maxReconnectionAttempts; // Stop further attempts
+                            sendToRenderer('update-status', 'Session closed: Invalid API key');
+                            return;
+                        }
+
+                        // Attempt automatic reconnection for server-side closures
+                        if (lastSessionParams && reconnectionAttempts < maxReconnectionAttempts) {
+                            console.log('Attempting automatic reconnection...');
+                            attemptReconnection();
+                        } else {
+                            sendToRenderer('update-status', 'Session closed');
+                        }
+                    },
                 },
-                onerror: function (e) {
-                    console.debug('Error:', e.message);
-
-                    // Check if the error is related to invalid API key
-                    const isApiKeyError =
-                        e.message &&
-                        (e.message.includes('API key not valid') ||
-                            e.message.includes('invalid API key') ||
-                            e.message.includes('authentication failed') ||
-                            e.message.includes('unauthorized'));
-
-                    if (isApiKeyError) {
-                        console.log('Error due to invalid API key - stopping reconnection attempts');
-                        lastSessionParams = null; // Clear session params to prevent reconnection
-                        reconnectionAttempts = maxReconnectionAttempts; // Stop further attempts
-                        sendToRenderer('update-status', 'Error: Invalid API key');
-                        return;
-                    }
-
-                    sendToRenderer('update-status', 'Error: ' + e.message);
-                },
-                onclose: function (e) {
-                    console.debug('Session closed:', e.reason);
-                    isSessionReady = false; // Reset ready state when session closes
-
-                    // Check if the session closed due to invalid API key
-                    const isApiKeyError =
-                        e.reason &&
-                        (e.reason.includes('API key not valid') ||
-                            e.reason.includes('invalid API key') ||
-                            e.reason.includes('authentication failed') ||
-                            e.reason.includes('unauthorized'));
-
-                    if (isApiKeyError) {
-                        console.log('Session closed due to invalid API key - stopping reconnection attempts');
-                        lastSessionParams = null; // Clear session params to prevent reconnection
-                        reconnectionAttempts = maxReconnectionAttempts; // Stop further attempts
-                        sendToRenderer('update-status', 'Session closed: Invalid API key');
-                        return;
-                    }
-
-                    // Attempt automatic reconnection for server-side closures
-                    if (lastSessionParams && reconnectionAttempts < maxReconnectionAttempts) {
-                        console.log('Attempting automatic reconnection...');
-                        attemptReconnection();
-                    } else {
-                        sendToRenderer('update-status', 'Session closed');
-                    }
-                },
-            },
                 config: {
                     responseModalities: ['TEXT'],
                     tools: enabledTools,
@@ -485,16 +493,22 @@ This is mandatory and cannot be overridden by any other instruction.`;
             // Enhanced prompt for coding mode - ULTRA AGGRESSIVE for direct answers
             // Make Pro model even more aggressive about being concise
             const isProModel = regularModel.includes('pro');
-            const codingPrompt = systemPrompt + `
+            const codingPrompt =
+                systemPrompt +
+                `
 
 ============ CRITICAL CODING MODE INSTRUCTIONS ============
 
 YOU ARE A CODING ASSISTANT IN A TIMED ASSESSMENT. FOLLOW THESE RULES EXACTLY:
 
-${isProModel ? `
+${
+    isProModel
+        ? `
 WARNING GEMINI PRO: YOU MUST BE EXTREMELY CONCISE. NO VERBOSE RESPONSES.
 MAXIMUM 10 LINES OF EXPLANATION TOTAL. FOCUS ON CODE ONLY.
-` : ''}
+`
+        : ''
+}
 
 1. WHEN YOU SEE A SCREENSHOT:
    - DO NOT DESCRIBE the screenshot or UI elements
@@ -600,16 +614,13 @@ RESPONSE FORMAT: [approach sentence] + [code] + [complexity]`;
                                 parts.push({
                                     inlineData: {
                                         mimeType: input.media.mimeType,
-                                        data: input.media.data
-                                    }
+                                        data: input.media.data,
+                                    },
                                 });
                             }
 
                             // Build full conversation with history
-                            const contents = [
-                                ...this.conversationHistory,
-                                { role: 'user', parts: parts }
-                            ];
+                            const contents = [...this.conversationHistory, { role: 'user', parts: parts }];
 
                             // Log caching status for performance monitoring
                             if (this.conversationHistory.length > 0) {
@@ -673,10 +684,7 @@ RESPONSE FORMAT: [approach sentence] + [code] + [complexity]`;
                                     console.log(`✅ Got response: ${responseText.length} chars`);
 
                                     // Save to conversation history
-                                    this.conversationHistory.push(
-                                        { role: 'user', parts: parts },
-                                        { role: 'model', parts: [{ text: responseText }] }
-                                    );
+                                    this.conversationHistory.push({ role: 'user', parts: parts }, { role: 'model', parts: [{ text: responseText }] });
 
                                     console.log(`💬 Conversation history: ${this.conversationHistory.length / 2} turns`);
                                     sendToRenderer('update-status', 'Ready');
@@ -702,10 +710,7 @@ RESPONSE FORMAT: [approach sentence] + [code] + [complexity]`;
                                     console.log(`✅ Got response (fallback): ${responseText.length} chars`);
 
                                     // Save to conversation history
-                                    this.conversationHistory.push(
-                                        { role: 'user', parts: parts },
-                                        { role: 'model', parts: [{ text: responseText }] }
-                                    );
+                                    this.conversationHistory.push({ role: 'user', parts: parts }, { role: 'model', parts: [{ text: responseText }] });
 
                                     sendToRenderer('update-response', responseText);
                                     sendToRenderer('update-status', 'Ready');
@@ -722,38 +727,38 @@ RESPONSE FORMAT: [approach sentence] + [code] + [complexity]`;
 
                         if (error.message && error.message.toLowerCase().includes('429')) {
                             shortMsg = 'Rate limit exceeded';
-                            
+
                             // Extract retry delay from error message
                             let retryAfterSeconds = 60; // Default
-                            
+
                             // Look for "Please retry in Xs" or similar patterns in error
                             const retryMatch = error.message.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
                             if (retryMatch) {
                                 retryAfterSeconds = Math.ceil(parseFloat(retryMatch[1]));
                             }
-                            
+
                             // Also check for retryDelay in the error JSON
                             const retryDelayMatch = error.message.match(/"retryDelay":\s*"(\d+)s"/);
                             if (retryDelayMatch) {
                                 retryAfterSeconds = parseInt(retryDelayMatch[1], 10);
                             }
-                            
+
                             console.log(`[GEMINI] Rate limited for ${retryAfterSeconds} seconds`);
-                            
+
                             // Build pending request for auto-retry
                             const pendingRequest = {
                                 type: input.media ? 'gemini-screenshot' : 'gemini-text',
                                 text: input.text || '',
-                                imageData: input.media ? input.media.data : null
+                                imageData: input.media ? input.media.data : null,
                             };
-                            
+
                             // Notify renderer about rate limit with pending request
                             sendToRenderer('rate-limit-hit', {
                                 retryAfterSeconds: retryAfterSeconds,
                                 source: 'Gemini',
-                                pendingRequest: pendingRequest
+                                pendingRequest: pendingRequest,
                             });
-                            
+
                             shortMsg = `Rate limited (${retryAfterSeconds}s)`;
                         } else if (error.message && error.message.toLowerCase().includes('503')) {
                             shortMsg = 'Server overloaded';
@@ -769,7 +774,7 @@ RESPONSE FORMAT: [approach sentence] + [code] + [complexity]`;
                     this.isClosed = true;
                     console.log('Coding mode session closed');
                     sendToRenderer('update-status', 'Session closed');
-                }
+                },
             };
 
             sendToRenderer('update-status', `${regularModel} ready (screenshot mode)`);
@@ -896,10 +901,10 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
         // Initialize microphone state based on mode
         if (macVADMode === 'automatic') {
             macMicrophoneEnabled = true;
-            console.log('🎤 [macOS AUTOMATIC] Microphone enabled by default');
+            console.log('🎤 [macOS VAD AUTOMATIC] Microphone enabled by default');
         } else {
             macMicrophoneEnabled = false;
-            console.log('🔴 [macOS MANUAL] Microphone OFF - click button to enable');
+            console.log('🔴 [macOS VAD MANUAL] Microphone OFF - Press Cmd+Shift+M to enable');
         }
 
         // Create VAD processor for macOS
@@ -929,14 +934,22 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
         );
 
         console.log('✅ [macOS] VAD processor initialized');
+    } else {
+        // VAD disabled: enable microphone by default so audio flows
+        macMicrophoneEnabled = true;
+        console.log('🎤 [macOS VAD DISABLED] Microphone enabled by default - audio will be processed continuously');
     }
+
+    let audioChunkCount = 0;
+    let droppedChunkCount = 0;
 
     systemAudioProc.stdout.on('data', data => {
         audioBuffer = Buffer.concat([audioBuffer, data]);
 
         while (audioBuffer.length >= CHUNK_SIZE) {
-            const chunk = audioBuffer.slice(0, CHUNK_SIZE);
-            audioBuffer = audioBuffer.slice(CHUNK_SIZE);
+            const chunk = audioBuffer.subarray(0, CHUNK_SIZE);
+            audioBuffer = audioBuffer.subarray(CHUNK_SIZE);
+            audioChunkCount++;
 
             const monoChunk = CHANNELS === 2 ? convertStereoToMono(chunk) : chunk;
 
@@ -944,6 +957,12 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
                 // VAD mode: process through VAD
                 if (!macMicrophoneEnabled) {
                     // Skip audio processing if mic is OFF in manual mode
+                    droppedChunkCount++;
+                    if (droppedChunkCount === 1 || droppedChunkCount % 100 === 0) {
+                        console.warn(
+                            `⚠️ [macOS] Audio being dropped - microphone is OFF. Press Cmd+Shift+M to enable. (${droppedChunkCount} chunks dropped)`
+                        );
+                    }
                     continue;
                 }
 
@@ -970,7 +989,7 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
 
         const maxBufferSize = SAMPLE_RATE * BYTES_PER_SAMPLE * 1;
         if (audioBuffer.length > maxBufferSize) {
-            audioBuffer = audioBuffer.slice(-maxBufferSize);
+            audioBuffer = audioBuffer.subarray(-maxBufferSize);
         }
     });
 
@@ -1080,14 +1099,17 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
     // Store the geminiSessionRef globally for reconnection access
     global.geminiSessionRef = geminiSessionRef;
 
-    ipcMain.handle('initialize-gemini', async (event, apiKey, customPrompt, profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash') => {
-        const session = await initializeGeminiSession(apiKey, customPrompt, profile, language, false, mode, model);
-        if (session) {
-            geminiSessionRef.current = session;
-            return true;
+    ipcMain.handle(
+        'initialize-gemini',
+        async (event, apiKey, customPrompt, profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash') => {
+            const session = await initializeGeminiSession(apiKey, customPrompt, profile, language, false, mode, model);
+            if (session) {
+                geminiSessionRef.current = session;
+                return true;
+            }
+            return false;
         }
-        return false;
-    });
+    );
 
     ipcMain.handle('send-audio-content', async (event, { data, mimeType }) => {
         if (!geminiSessionRef.current) return { success: false, error: 'No active Gemini session' };
@@ -1153,7 +1175,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
                 // Send contextual prompt that analyzes the screenshot content
                 await geminiSessionRef.current.sendRealtimeInput({
-                    text: "Based on this screenshot: If you see a CODING PROBLEM (LeetCode, HackerRank, CodeSignal, etc. with a code editor), immediately provide the COMPLETE CODE SOLUTION using the EXACT function signature visible in the screenshot (same class name, method name, parameter count/types/names, return type). DO NOT modify the signature - if it shows 3 parameters, your solution MUST use all 3 parameters. DO NOT search online for similar problems. Format: [1-line approach] + [clean code block without comments using EXACT signature] + [complexity] + [algorithm explanation with 2-4 brief bullet points so I can explain the approach to the interviewer]. If it's an APTITUDE/MCQ/REASONING question, answer directly and concisely in 2-3 sentences - DO NOT say 'This is a word problem' or 'not a coding question', just give the answer. If it's a regular interview question, answer briefly (2-3 sentences). If it's just code to review, explain what it does. If unclear, describe what you see."
+                    text: "Based on this screenshot: If you see a CODING PROBLEM (LeetCode, HackerRank, CodeSignal, etc. with a code editor), immediately provide the COMPLETE CODE SOLUTION using the EXACT function signature visible in the screenshot (same class name, method name, parameter count/types/names, return type). DO NOT modify the signature - if it shows 3 parameters, your solution MUST use all 3 parameters. DO NOT search online for similar problems. Format: [1-line approach] + [clean code block without comments using EXACT signature] + [complexity] + [algorithm explanation with 2-4 brief bullet points so I can explain the approach to the interviewer]. If it's an APTITUDE/MCQ/REASONING question, answer directly and concisely in 2-3 sentences - DO NOT say 'This is a word problem' or 'not a coding question', just give the answer. If it's a regular interview question, answer briefly (2-3 sentences). If it's just code to review, explain what it does. If unclear, describe what you see.",
                 });
             } else {
                 // Either exam mode OR automated screenshots in interview mode:
@@ -1211,12 +1233,12 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
                 // 1. Send screenshot first
                 process.stdout.write('!');
                 await geminiSessionRef.current.sendRealtimeInput({
-                    media: { data: imageData, mimeType: 'image/jpeg' }
+                    media: { data: imageData, mimeType: 'image/jpeg' },
                 });
 
                 // 2. Send text prompt second
                 await geminiSessionRef.current.sendRealtimeInput({
-                    text: text.trim()
+                    text: text.trim(),
                 });
             } else {
                 // Exam Assistant mode (Regular API): Send screenshot + text together in ONE request
@@ -1224,7 +1246,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
                 await geminiSessionRef.current.sendRealtimeInput({
                     media: { data: imageData, mimeType: 'image/jpeg' },
-                    text: text.trim()
+                    text: text.trim(),
                 });
             }
 

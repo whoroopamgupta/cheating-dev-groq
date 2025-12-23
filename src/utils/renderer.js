@@ -173,7 +173,15 @@ async function initializeGemini(profile = 'interview', language = 'en-US', mode 
         const selectedMode = mode || localStorage.getItem('selectedMode') || 'interview';
         const selectedModel = model || localStorage.getItem('selectedModel') || 'gemini-2.5-flash';
 
-        const success = await ipcRenderer.invoke('initialize-gemini', apiKey, localStorage.getItem('customPrompt') || '', profile, language, selectedMode, selectedModel);
+        const success = await ipcRenderer.invoke(
+            'initialize-gemini',
+            apiKey,
+            localStorage.getItem('customPrompt') || '',
+            profile,
+            language,
+            selectedMode,
+            selectedModel
+        );
         if (success) {
             cheddar.setStatus(selectedMode === 'interview' ? 'Live' : 'Ready');
         } else {
@@ -246,7 +254,7 @@ ipcRenderer.on('groq-transcription', async (event, transcription) => {
 
         const result = await ipcRenderer.invoke('groq-generate-response', {
             message: cleanTranscription,
-            imageBase64: null // Text-only for now, screenshots handled separately
+            imageBase64: null, // Text-only for now, screenshots handled separately
         });
 
         if (!result.success) {
@@ -275,15 +283,20 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
     tokenTracker.reset();
     console.log('🎯 Token tracker reset for new capture session');
 
-    // Enable microphone if in automatic VAD mode
+    // Initialize microphone state based on VAD settings
     const vadEnabled = localStorage.getItem('vadEnabled') === 'true';
     const vadMode = localStorage.getItem('vadMode') || 'automatic';
+
     if (vadEnabled && vadMode === 'automatic') {
         microphoneEnabled = true;
-        console.log('🎤 [AUTOMATIC MODE] Microphone enabled at session start');
+        console.log('🎤 [VAD AUTOMATIC MODE] Microphone enabled at session start');
     } else if (vadEnabled && vadMode === 'manual') {
         microphoneEnabled = false;
-        console.log('🔴 [MANUAL MODE] Microphone OFF - click button to enable');
+        console.log('🔴 [VAD MANUAL MODE] Microphone OFF - Press Cmd+Shift+M to enable');
+    } else {
+        // VAD disabled: enable microphone by default so audio flows
+        microphoneEnabled = true;
+        console.log('🎤 [VAD DISABLED] Microphone enabled by default - audio will be processed continuously');
     }
 
     try {
@@ -468,19 +481,25 @@ function setupLinuxSystemAudioProcessing() {
     let audioBuffer = [];
     const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
     let audioFrameCount = 0;
+    let droppedFrameCount = 0;
 
     audioProcessor.onaudioprocess = async e => {
         audioFrameCount++;
 
         // Debug: Log first few frames
         if (audioFrameCount <= 3) {
-            console.log(`🔊 [AUDIO] Frame ${audioFrameCount}: microphoneEnabled=${microphoneEnabled}, isVADEnabled=${isVADEnabled}, useGroq=${useGroqForSTT}`);
+            console.log(
+                `🔊 [AUDIO] Frame ${audioFrameCount}: microphoneEnabled=${microphoneEnabled}, isVADEnabled=${isVADEnabled}, useGroq=${useGroqForSTT}`
+            );
         }
 
         // Skip audio processing if microphone is not enabled
         if (!microphoneEnabled) {
-            if (audioFrameCount <= 3) {
-                console.log(`🚫 [AUDIO] Skipping frame - microphone is OFF`);
+            droppedFrameCount++;
+            if (droppedFrameCount === 1 || droppedFrameCount % 100 === 0) {
+                console.warn(
+                    `⚠️ [Linux] Audio being dropped - microphone is OFF. Press Cmd+Shift+M to enable. (${droppedFrameCount} frames dropped)`
+                );
             }
             return;
         }
@@ -585,19 +604,25 @@ function setupWindowsLoopbackProcessing() {
     let audioBuffer = [];
     const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
     let audioFrameCount = 0;
+    let droppedFrameCount = 0;
 
     audioProcessor.onaudioprocess = async e => {
         audioFrameCount++;
 
         // Debug: Log first few frames
         if (audioFrameCount <= 3) {
-            console.log(`🔊 [AUDIO] Frame ${audioFrameCount}: microphoneEnabled=${microphoneEnabled}, isVADEnabled=${isVADEnabled}, useGroq=${useGroqForSTT}`);
+            console.log(
+                `🔊 [AUDIO] Frame ${audioFrameCount}: microphoneEnabled=${microphoneEnabled}, isVADEnabled=${isVADEnabled}, useGroq=${useGroqForSTT}`
+            );
         }
 
         // Skip audio processing if microphone is not enabled
         if (!microphoneEnabled) {
-            if (audioFrameCount <= 3) {
-                console.log(`🚫 [AUDIO] Skipping frame - microphone is OFF`);
+            droppedFrameCount++;
+            if (droppedFrameCount === 1 || droppedFrameCount % 100 === 0) {
+                console.warn(
+                    `⚠️ [Windows] Audio being dropped - microphone is OFF. Press Cmd+Shift+M to enable. (${droppedFrameCount} frames dropped)`
+                );
             }
             return;
         }
@@ -823,8 +848,9 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
 
                 try {
                     const result = await ipcRenderer.invoke('groq-generate-response', {
-                        message: 'Please analyze this screenshot and answer the question or problem shown. If it shows a coding problem, provide a complete solution. If it shows an interview question, provide a natural, conversational answer.',
-                        imageBase64: base64data
+                        message:
+                            'Please analyze this screenshot and answer the question or problem shown. If it shows a coding problem, provide a complete solution. If it shows an interview question, provide a natural, conversational answer.',
+                        imageBase64: base64data,
                     });
 
                     if (!result.success) {
@@ -983,7 +1009,7 @@ async function sendTextMessage(text) {
 
             result = await ipcRenderer.invoke('groq-generate-response', {
                 message: text.trim(),
-                imageBase64: base64data
+                imageBase64: base64data,
             });
 
             if (result.success) {
@@ -995,7 +1021,7 @@ async function sendTextMessage(text) {
             // Exam/Coding mode: Use Gemini
             result = await ipcRenderer.invoke('send-screenshot-with-text', {
                 imageData: base64data,
-                text: text.trim()
+                text: text.trim(),
             });
 
             if (result.success) {
