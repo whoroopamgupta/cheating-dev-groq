@@ -3,6 +3,7 @@ import { AppHeader } from './AppHeader.js';
 import { MainView } from '../views/MainView.js';
 import { CustomizeView } from '../views/CustomizeView.js';
 import { HelpView } from '../views/HelpView.js';
+import { HistoryView } from '../views/HistoryView.js';
 import { AssistantView } from '../views/AssistantView.js';
 import { OnboardingView } from '../views/OnboardingView.js';
 import { AdvancedView } from '../views/AdvancedView.js';
@@ -106,6 +107,137 @@ export class CheatingDaddyApp extends LitElement {
         ::-webkit-scrollbar-thumb:hover {
             background: var(--scrollbar-thumb-hover);
         }
+
+        /* Close Session Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--main-content-background, rgba(0, 0, 0, 0.95));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color, #e5e5e7);
+            margin-bottom: 8px;
+        }
+
+        .modal-description {
+            font-size: 13px;
+            color: var(--description-color, rgba(255, 255, 255, 0.6));
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .modal-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .modal-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .modal-btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+        }
+
+        .modal-btn-restart {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(52, 211, 153, 0.3);
+        }
+
+        .modal-btn-restart:hover {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 211, 153, 0.4);
+        }
+
+        .modal-btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-color, #e5e5e7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .modal-btn-cancel {
+            background: transparent;
+            color: var(--description-color, rgba(255, 255, 255, 0.5));
+            font-size: 12px;
+            padding: 10px;
+            margin-top: 4px;
+        }
+
+        .modal-btn-cancel:hover {
+            color: var(--text-color, #e5e5e7);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .modal-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 4px 0;
+            color: var(--description-color, rgba(255, 255, 255, 0.4));
+            font-size: 11px;
+        }
+
+        .modal-divider::before,
+        .modal-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
     `;
 
     static properties = {
@@ -133,6 +265,8 @@ export class CheatingDaddyApp extends LitElement {
         rateLimitSource: { type: String },
         // Auth validation message (shown when user is logged out due to plan expiration)
         logoutMessage: { type: String },
+        // Close session modal
+        _showCloseModal: { state: true },
     };
 
     constructor() {
@@ -181,6 +315,13 @@ export class CheatingDaddyApp extends LitElement {
         // Auth validation message (for plan expiration)
         this.logoutMessage = '';
 
+        // Conversation tracking for history
+        this._sessionQuestions = []; // Track questions/transcriptions for current session
+        this._currentQuestion = ''; // Current question being processed
+
+        // Close session modal
+        this._showCloseModal = false;
+
         // Apply layout mode to document root
         this.updateLayoutMode();
 
@@ -213,6 +354,13 @@ export class CheatingDaddyApp extends LitElement {
                 console.log('[CheatingDaddyApp] Received rate-limit-hit event:', data);
                 const { retryAfterSeconds, source, pendingRequest } = data;
                 this.handleRateLimitHit(retryAfterSeconds, source, pendingRequest);
+            });
+            // Track transcriptions as questions for conversation history
+            ipcRenderer.on('groq-transcription', (_, transcription) => {
+                if (transcription && transcription.trim()) {
+                    this._currentQuestion = transcription.trim();
+                    console.log('[History] Question received:', this._currentQuestion.substring(0, 50) + '...');
+                }
             });
         }
 
@@ -348,24 +496,49 @@ export class CheatingDaddyApp extends LitElement {
                 response.toLowerCase().includes('go on') ||
                 response.toLowerCase().includes('continue'));
 
+        // Check if user is currently viewing the latest response
+        const isViewingLatest = this.currentResponseIndex === this.responses.length - 1 || this.currentResponseIndex === -1;
+
         if (this._awaitingNewResponse || this.responses.length === 0) {
             // Always add as new response when explicitly waiting for one
             this.responses = [...this.responses, response];
-            this.currentResponseIndex = this.responses.length - 1;
+            // Track question-response pair for conversation history
+            this._sessionQuestions.push({
+                question: this._currentQuestion || 'Voice/Audio Input',
+                response: response,
+            });
+            this._currentQuestion = ''; // Clear current question
+            // Only auto-navigate if user was viewing the latest response
+            if (isViewingLatest) {
+                this.currentResponseIndex = this.responses.length - 1;
+            }
             this._awaitingNewResponse = false;
             this._currentResponseIsComplete = false;
-            console.log('[setResponse] Pushed new response:', response);
+            console.log('[setResponse] Pushed new response:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
         } else if (!this._currentResponseIsComplete && !isFillerResponse && this.responses.length > 0) {
             // For substantial responses, update the last one (streaming behavior)
             // Only update if the current response is not marked as complete
             this.responses = [...this.responses.slice(0, this.responses.length - 1), response];
+            // Update the corresponding question-response pair
+            if (this._sessionQuestions.length > 0) {
+                this._sessionQuestions[this._sessionQuestions.length - 1].response = response;
+            }
             console.log('[setResponse] Updated last response:', response);
         } else {
             // For filler responses or when current response is complete, add as new
             this.responses = [...this.responses, response];
-            this.currentResponseIndex = this.responses.length - 1;
+            // Track question-response pair for conversation history
+            this._sessionQuestions.push({
+                question: this._currentQuestion || 'Voice/Audio Input',
+                response: response,
+            });
+            this._currentQuestion = ''; // Clear current question
+            // Only auto-navigate if user was viewing the latest response
+            if (isViewingLatest) {
+                this.currentResponseIndex = this.responses.length - 1;
+            }
             this._currentResponseIsComplete = false;
-            console.log('[setResponse] Added response as new:', response);
+            console.log('[setResponse] Added response as new:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
         }
         this.shouldAnimateResponse = true;
         this.requestUpdate();
@@ -382,25 +555,64 @@ export class CheatingDaddyApp extends LitElement {
         this.requestUpdate();
     }
 
+    handleHistoryClick() {
+        this.currentView = 'history';
+        this.requestUpdate();
+    }
+
+    // Save current conversation to history
+    saveCurrentConversation() {
+        // Only save if there are questions/responses to save
+        if (this._sessionQuestions.length === 0) {
+            console.log('[History] No questions to save');
+            return;
+        }
+
+        try {
+            // Load existing conversations
+            let conversations = [];
+            const saved = localStorage.getItem('conversationHistory');
+            if (saved) {
+                conversations = JSON.parse(saved);
+            }
+
+            // Create new conversation entry
+            const newConversation = {
+                id: Date.now().toString(),
+                timestamp: new Date().toISOString(),
+                mode: this.currentMode,
+                model: this.currentModel,
+                profile: this.selectedProfile,
+                duration: this.startTime ? Date.now() - this.startTime : 0,
+                questions: this._sessionQuestions.map(qa => ({
+                    question: qa.question,
+                    response: qa.response,
+                })),
+            };
+
+            // Add to conversations (newest first)
+            conversations.unshift(newConversation);
+
+            // Save to localStorage
+            localStorage.setItem('conversationHistory', JSON.stringify(conversations));
+            console.log(`[History] Saved conversation with ${this._sessionQuestions.length} questions`);
+        } catch (error) {
+            console.error('[History] Error saving conversation:', error);
+        }
+    }
+
     handleAdvancedClick() {
         this.currentView = 'advanced';
         this.requestUpdate();
     }
 
     async handleClose() {
-        if (this.currentView === 'customize' || this.currentView === 'help' || this.currentView === 'advanced') {
+        if (this.currentView === 'customize' || this.currentView === 'help' || this.currentView === 'advanced' || this.currentView === 'history') {
             this.currentView = 'main';
         } else if (this.currentView === 'assistant') {
-            cheddar.stopCapture();
-
-            // Close the session
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                await ipcRenderer.invoke('close-session');
-            }
-            this.sessionActive = false;
-            this.currentView = 'main';
-            console.log('Session closed');
+            // Show the close session modal instead of directly closing
+            this._showCloseModal = true;
+            this.requestUpdate();
         } else {
             // Quit the entire application
             if (window.require) {
@@ -408,6 +620,91 @@ export class CheatingDaddyApp extends LitElement {
                 await ipcRenderer.invoke('quit-application');
             }
         }
+    }
+
+    // Close modal and continue session
+    handleCloseModalCancel() {
+        this._showCloseModal = false;
+        this.requestUpdate();
+    }
+
+    // Close session and go to main view
+    async handleCloseSession() {
+        this._showCloseModal = false;
+
+        // Save conversation to history before closing
+        this.saveCurrentConversation();
+
+        cheddar.stopCapture();
+
+        // Close the session
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('close-session');
+        }
+        this.sessionActive = false;
+        this.currentView = 'main';
+
+        // Clear session data
+        this._sessionQuestions = [];
+        this._currentQuestion = '';
+
+        console.log('Session closed');
+    }
+
+    // Close session and go to conversation history
+    async handleCloseAndViewHistory() {
+        this._showCloseModal = false;
+
+        // Save conversation to history before closing
+        this.saveCurrentConversation();
+
+        cheddar.stopCapture();
+
+        // Close the session
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('close-session');
+        }
+        this.sessionActive = false;
+
+        // Clear session data
+        this._sessionQuestions = [];
+        this._currentQuestion = '';
+
+        // Go to history view
+        this.currentView = 'history';
+        console.log('Session closed, viewing history');
+    }
+
+    // Close session and start a new one
+    async handleCloseAndRestart() {
+        this._showCloseModal = false;
+
+        // Save conversation to history before closing
+        this.saveCurrentConversation();
+
+        cheddar.stopCapture();
+
+        // Close the session
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('close-session');
+        }
+        this.sessionActive = false;
+
+        // Clear session data
+        this._sessionQuestions = [];
+        this._currentQuestion = '';
+        this.responses = [];
+        this.currentResponseIndex = -1;
+
+        console.log('Session closed, starting new session');
+
+        // Start a new session after a brief delay
+        setTimeout(() => {
+            this.handleStart();
+        }, 100);
     }
 
     async handleHideToggle() {
@@ -501,6 +798,8 @@ export class CheatingDaddyApp extends LitElement {
         cheddar.startCapture(screenshotMode, this.selectedImageQuality);
         this.responses = [];
         this.currentResponseIndex = -1;
+        this._sessionQuestions = [];
+        this._currentQuestion = '';
         this.startTime = Date.now();
         this.currentView = 'assistant';
     }
@@ -516,10 +815,17 @@ export class CheatingDaddyApp extends LitElement {
     }
 
     handleClearAndRestart() {
+        // Save conversation to history before clearing (if there are questions)
+        if (this._sessionQuestions.length > 0) {
+            this.saveCurrentConversation();
+        }
+
         // Clear the current session and responses
         this.responses = [];
         this.currentResponseIndex = -1;
         this.startTime = null;
+        this._sessionQuestions = [];
+        this._currentQuestion = '';
 
         // Stop any ongoing capture if in assistant view
         if (this.currentView === 'assistant' && window.cheddar) {
@@ -589,6 +895,9 @@ export class CheatingDaddyApp extends LitElement {
 
     // Assistant view event handlers
     async handleSendText(message) {
+        // Track the text message as a question for conversation history
+        this._currentQuestion = message;
+
         const result = await window.cheddar.sendTextMessage(message);
 
         if (!result.success) {
@@ -800,6 +1109,9 @@ export class CheatingDaddyApp extends LitElement {
             case 'advanced':
                 return html` <advanced-view></advanced-view> `;
 
+            case 'history':
+                return html` <history-view .onExternalLinkClick=${url => this.handleExternalLinkClick(url)}></history-view> `;
+
             case 'assistant':
                 return html`
                     <assistant-view
@@ -854,6 +1166,7 @@ export class CheatingDaddyApp extends LitElement {
                                   .rateLimitSource=${this.rateLimitSource}
                                   .onCustomizeClick=${() => this.handleCustomizeClick()}
                                   .onHelpClick=${() => this.handleHelpClick()}
+                                  .onHistoryClick=${() => this.handleHistoryClick()}
                                   .onAdvancedClick=${() => this.handleAdvancedClick()}
                                   .onCloseClick=${() => this.handleClose()}
                                   .onBackClick=${() => this.handleBackClick()}
@@ -869,6 +1182,44 @@ export class CheatingDaddyApp extends LitElement {
                     </div>
                 </div>
             </div>
+            ${this._showCloseModal
+                ? html`
+                      <div class="modal-overlay" @click=${this.handleCloseModalCancel}>
+                          <div class="modal-content" @click=${e => e.stopPropagation()}>
+                              <div class="modal-title">End Session?</div>
+                              <div class="modal-description">Your conversation will be saved to history.</div>
+                              <div class="modal-buttons">
+                                  <button class="modal-btn modal-btn-restart" @click=${this.handleCloseAndRestart}>
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <path d="M1 4v6h6M23 20v-6h-6" stroke-linecap="round" stroke-linejoin="round" />
+                                          <path
+                                              d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          />
+                                      </svg>
+                                      Restart New Session
+                                  </button>
+                                  <button class="modal-btn modal-btn-primary" @click=${this.handleCloseAndViewHistory}>
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <circle cx="12" cy="12" r="10" />
+                                          <path d="M12 6v6l4 2" />
+                                      </svg>
+                                      View Conversation History
+                                  </button>
+                                  <div class="modal-divider">or</div>
+                                  <button class="modal-btn modal-btn-secondary" @click=${this.handleCloseSession}>
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+                                      </svg>
+                                      Close Session
+                                  </button>
+                                  <button class="modal-btn modal-btn-cancel" @click=${this.handleCloseModalCancel}>← Continue Current Session</button>
+                              </div>
+                          </div>
+                      </div>
+                  `
+                : ''}
         `;
     }
 

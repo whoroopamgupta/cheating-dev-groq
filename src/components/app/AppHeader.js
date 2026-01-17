@@ -73,8 +73,13 @@ export class AppHeader extends LitElement {
         }
 
         @keyframes pulse-warning {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
         }
 
         .header-actions {
@@ -148,6 +153,7 @@ export class AppHeader extends LitElement {
         currentModel: { type: String },
         onCustomizeClick: { type: Function },
         onHelpClick: { type: Function },
+        onHistoryClick: { type: Function },
         onCloseClick: { type: Function },
         onBackClick: { type: Function },
         onHideToggleClick: { type: Function },
@@ -170,6 +176,7 @@ export class AppHeader extends LitElement {
         this.currentModel = '';
         this.onCustomizeClick = () => {};
         this.onHelpClick = () => {};
+        this.onHistoryClick = () => {};
         this.onCloseClick = () => {};
         this.onBackClick = () => {};
         this.onHideToggleClick = () => {};
@@ -256,7 +263,7 @@ export class AppHeader extends LitElement {
         if (this.rateLimitEndTime && this.rateLimitEndTime > Date.now()) {
             const remaining = Math.ceil((this.rateLimitEndTime - Date.now()) / 1000);
             console.log(`[AppHeader] Starting rate limit timer for ${remaining}s`);
-            
+
             this._rateLimitInterval = setInterval(() => {
                 const now = Date.now();
                 if (!this.rateLimitEndTime || this.rateLimitEndTime <= now) {
@@ -318,7 +325,7 @@ export class AppHeader extends LitElement {
             const seconds = totalSeconds % 60;
 
             // Format with leading zeros
-            const pad = (num) => String(num).padStart(2, '0');
+            const pad = num => String(num).padStart(2, '0');
 
             if (hours > 0) {
                 // Show hours when > 0: "1:23:45"
@@ -351,7 +358,7 @@ export class AppHeader extends LitElement {
     }
 
     isNavigationView() {
-        const navigationViews = ['customize', 'help', 'advanced'];
+        const navigationViews = ['customize', 'help', 'advanced', 'history'];
         return navigationViews.includes(this.currentView);
     }
 
@@ -485,6 +492,39 @@ export class AppHeader extends LitElement {
                                       ></path>
                                       <path
                                           d="M12 18.01L12.01 17.9989"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                  </svg>
+                              </button>
+                              <button class="icon-button" @click=${this.onHistoryClick} title="Conversation History">
+                                  <?xml version="1.0" encoding="UTF-8"?><svg
+                                      width="24px"
+                                      height="24px"
+                                      stroke-width="1.7"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      color="currentColor"
+                                  >
+                                      <path
+                                          d="M12 8V12L15 15"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M3.05078 11.0001C3.27441 7.60061 5.22415 4.60729 8.14258 3.11572C11.061 1.62415 14.5625 1.85742 17.2725 3.72949C19.9824 5.60156 21.4951 8.83301 21.2715 12.2324C21.0479 15.6318 19.0981 18.6252 16.1797 20.1167C13.2612 21.6083 9.75977 21.375 7.0498 19.503"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M6 6L3 3M3 3V6M3 3H6"
                                           stroke="currentColor"
                                           stroke-width="1.7"
                                           stroke-linecap="round"

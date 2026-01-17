@@ -78,7 +78,7 @@ function createWindow(sendToRenderer, geminiSessionRef, randomNames = null) {
         { useSystemPicker: true }
     );
 
-    mainWindow.setResizable(false);
+    mainWindow.setResizable(true);
     mainWindow.setContentProtection(true);
 
     // Enhanced always-on-top configuration to stay above all apps including UWP apps
