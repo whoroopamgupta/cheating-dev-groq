@@ -849,7 +849,7 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
                 try {
                     const result = await ipcRenderer.invoke('groq-generate-response', {
                         message:
-                            'Please analyze this screenshot and answer the question or problem shown. If it shows a coding problem, provide a complete solution. If it shows an interview question, provide a natural, conversational answer.',
+                            'Analyze this screenshot and answer the question/problem shown. CRITICAL: If it shows code or a coding problem, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor (C++, Java, Python, JavaScript, etc.) and provide your solution ONLY in that detected language. DO NOT default to Python or any other language - use EXACTLY what is shown on screen. Preserve the exact function signature if visible. If it shows an interview question, provide a natural, conversational answer.',
                         imageBase64: base64data,
                     });
 

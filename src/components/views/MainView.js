@@ -411,7 +411,15 @@ export class MainView extends LitElement {
     }
 
     render() {
-        const profileLabel = this.isExamMode() ? 'Exam Assistant' : 'Interview Mode';
+        // Determine profile label based on selected profile
+        let profileLabel;
+        if (this.isExamMode()) {
+            profileLabel = 'Exam Assistant (Gemini)';
+        } else if (this.selectedProfile === 'exam-groq') {
+            profileLabel = 'Exam Assistant (Groq) - NEW';
+        } else {
+            profileLabel = 'Interview Mode';
+        }
         const apiType = this.isExamMode() ? 'Gemini' : 'Groq';
 
         return html`

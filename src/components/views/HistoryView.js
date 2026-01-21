@@ -647,8 +647,8 @@ IMPORTANT: Focus primarily on the QUESTIONS that were asked, not the responses. 
 Keep the summary concise but insightful. Use bullet points where appropriate.`;
         }
 
-        // Coding/Exam mode prompt
-        if (mode === 'coding' || profile === 'exam') {
+        // Coding/Exam mode prompt (includes both exam and exam-groq profiles)
+        if (mode === 'coding' || profile === 'exam' || profile === 'exam-groq') {
             return `You are an expert coding assessment analyst. Analyze the following coding problems/questions and provide a comprehensive summary.
 
 CODING PROBLEMS/QUESTIONS:

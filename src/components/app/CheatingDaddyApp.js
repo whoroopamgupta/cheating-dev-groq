@@ -322,6 +322,9 @@ export class CheatingDaddyApp extends LitElement {
         // Close session modal
         this._showCloseModal = false;
 
+        // Auto-capture interval for exam-groq mode
+        this._examGroqAutoCaptureInterval = null;
+
         // Apply layout mode to document root
         this.updateLayoutMode();
 
@@ -635,6 +638,9 @@ export class CheatingDaddyApp extends LitElement {
         // Save conversation to history before closing
         this.saveCurrentConversation();
 
+        // Stop exam-groq auto-capture if running
+        this.stopExamGroqAutoCapture();
+
         cheddar.stopCapture();
 
         // Close the session
@@ -658,6 +664,9 @@ export class CheatingDaddyApp extends LitElement {
 
         // Save conversation to history before closing
         this.saveCurrentConversation();
+
+        // Stop exam-groq auto-capture if running
+        this.stopExamGroqAutoCapture();
 
         cheddar.stopCapture();
 
@@ -683,6 +692,9 @@ export class CheatingDaddyApp extends LitElement {
 
         // Save conversation to history before closing
         this.saveCurrentConversation();
+
+        // Stop exam-groq auto-capture if running
+        this.stopExamGroqAutoCapture();
 
         cheddar.stopCapture();
 
@@ -714,23 +726,44 @@ export class CheatingDaddyApp extends LitElement {
         }
     }
 
+    async handleAnalyzeScreen() {
+        console.log('[AnalyzeScreen] Manual screen analysis triggered');
+
+        // Use the globally exposed captureManualScreenshot function
+        // This is exposed in renderer.js and handles both Groq and Gemini modes
+        if (window.captureManualScreenshot) {
+            try {
+                this.setStatus('Analyzing screen...');
+                await window.captureManualScreenshot();
+                console.log('[AnalyzeScreen] Screenshot capture initiated');
+            } catch (error) {
+                console.error('[AnalyzeScreen] Error capturing screenshot:', error);
+                this.setStatus('Error analyzing');
+            }
+        } else {
+            console.error('[AnalyzeScreen] captureManualScreenshot not available');
+            this.setStatus('Feature unavailable');
+        }
+    }
+
     // Main view event handlers
     async handleStart() {
         // Auto-set mode based on profile
         let selectedMode;
         if (this.selectedProfile === 'exam') {
-            // Exam Assistant -> Coding/OA mode (forced) - uses Gemini API
+            // Exam Assistant (Gemini) -> Coding/OA mode (forced) - uses Gemini API
             selectedMode = 'coding';
             localStorage.setItem('selectedMode', 'coding');
         } else {
-            // All other profiles -> Interview mode (forced) - uses Groq API
+            // All other profiles including exam-groq -> Interview mode (forced) - uses Groq API
             selectedMode = 'interview';
             localStorage.setItem('selectedMode', 'interview');
         }
 
         // Check for the correct API key based on profile
-        const isExamMode = this.selectedProfile === 'exam';
-        const apiKey = isExamMode
+        // exam uses Gemini, exam-groq and all others use Groq
+        const isGeminiExamMode = this.selectedProfile === 'exam';
+        const apiKey = isGeminiExamMode
             ? (localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey'))?.trim()
             : localStorage.getItem('groqApiKey')?.trim();
 
@@ -750,11 +783,11 @@ export class CheatingDaddyApp extends LitElement {
         const selectedModel = localStorage.getItem('selectedModel') || 'gemini-2.5-pro';
 
         // Initialize the appropriate API based on mode
-        if (isExamMode) {
-            // Exam mode: Use Gemini API
+        if (isGeminiExamMode) {
+            // Exam mode (Gemini): Use Gemini API
             await cheddar.initializeGemini(this.selectedProfile, this.selectedLanguage, selectedMode, selectedModel);
         } else {
-            // Interview mode: Use Groq API for STT + Llama for response generation
+            // Interview mode (including exam-groq): Use Groq API for STT + Llama for response generation
             await cheddar.initializeGroq(apiKey);
 
             // Get the selected Groq model (default to maverick)
@@ -765,6 +798,7 @@ export class CheatingDaddyApp extends LitElement {
             const customPrompt = localStorage.getItem(`customPrompt_${this.selectedProfile}`) || '';
 
             // Import prompts module to get system prompt
+            // exam-groq uses its own dedicated prompts that emphasize accuracy + explanations
             const { getSystemPrompt } = window.require('./utils/prompts.js');
             const systemPrompt = getSystemPrompt(this.selectedProfile, customPrompt, true);
 
@@ -790,7 +824,14 @@ export class CheatingDaddyApp extends LitElement {
         const screenshotMode = 'manual';
 
         if (selectedMode === 'coding') {
-            console.log('💻 Coding/OA mode (Exam Assistant): Manual capture only - Press Ctrl+Enter to analyze screenshot');
+            console.log('💻 Coding/OA mode (Exam Assistant Gemini): Manual capture only - Press Ctrl+Enter to analyze screenshot');
+        } else if (this.selectedProfile === 'exam-groq') {
+            const autoCaptureEnabled = localStorage.getItem('examGroqAutoCapture') === 'true';
+            if (autoCaptureEnabled) {
+                console.log('📝 Exam Assistant (Groq): Auto-capture enabled - Screen will be analyzed every 10 seconds');
+            } else {
+                console.log('📝 Exam Assistant (Groq): Manual capture only - Press Ctrl+Enter to analyze screenshot. Voice questions auto-detected.');
+            }
         } else {
             console.log('🎤 Interview mode: Manual capture only - Press Ctrl+Enter if needed. Voice questions are auto-detected.');
         }
@@ -802,14 +843,52 @@ export class CheatingDaddyApp extends LitElement {
         this._currentQuestion = '';
         this.startTime = Date.now();
         this.currentView = 'assistant';
+
+        // Start auto-capture interval for exam-groq if enabled
+        if (this.selectedProfile === 'exam-groq') {
+            const autoCaptureEnabled = localStorage.getItem('examGroqAutoCapture') === 'true';
+            if (autoCaptureEnabled) {
+                this.startExamGroqAutoCapture();
+            }
+        }
+    }
+
+    startExamGroqAutoCapture() {
+        // Clear any existing interval
+        this.stopExamGroqAutoCapture();
+
+        console.log('[ExamGroq] Starting auto-capture every 10 seconds...');
+        this.setStatus('Auto-capture active');
+
+        // Capture immediately on start
+        if (window.captureManualScreenshot) {
+            window.captureManualScreenshot();
+        }
+
+        // Then capture every 10 seconds
+        this._examGroqAutoCaptureInterval = setInterval(() => {
+            if (window.captureManualScreenshot) {
+                console.log('[ExamGroq] Auto-capturing screenshot...');
+                window.captureManualScreenshot();
+            }
+        }, 10000);
+    }
+
+    stopExamGroqAutoCapture() {
+        if (this._examGroqAutoCaptureInterval) {
+            clearInterval(this._examGroqAutoCaptureInterval);
+            this._examGroqAutoCaptureInterval = null;
+            console.log('[ExamGroq] Auto-capture stopped');
+        }
     }
 
     async handleAPIKeyHelp() {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             // Open different URLs based on current profile
-            const isExamMode = this.selectedProfile === 'exam';
-            const url = isExamMode ? 'https://www.cheatingdev.in/gemini-api-key' : 'https://www.cheatingdev.in/groq-api-key';
+            // exam uses Gemini, exam-groq and all others use Groq
+            const isGeminiExamMode = this.selectedProfile === 'exam';
+            const url = isGeminiExamMode ? 'https://www.cheatingdev.in/gemini-api-key' : 'https://www.cheatingdev.in/groq-api-key';
             await ipcRenderer.invoke('open-external', url);
         }
     }
@@ -819,6 +898,9 @@ export class CheatingDaddyApp extends LitElement {
         if (this._sessionQuestions.length > 0) {
             this.saveCurrentConversation();
         }
+
+        // Stop exam-groq auto-capture if running
+        this.stopExamGroqAutoCapture();
 
         // Clear the current session and responses
         this.responses = [];
@@ -1120,6 +1202,7 @@ export class CheatingDaddyApp extends LitElement {
                         .selectedProfile=${this.selectedProfile}
                         .selectedLanguage=${this.selectedLanguage}
                         .onSendText=${message => this.handleSendText(message)}
+                        .onAnalyzeScreen=${() => this.handleAnalyzeScreen()}
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
                         @response-animation-complete=${() => {

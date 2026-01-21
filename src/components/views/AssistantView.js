@@ -42,7 +42,9 @@ export class AssistantView extends LitElement {
             opacity: 0;
             filter: blur(10px);
             display: inline-block;
-            transition: opacity 0.5s, filter 0.5s;
+            transition:
+                opacity 0.5s,
+                filter 0.5s;
         }
         .response-container [data-word].visible {
             opacity: 1;
@@ -535,6 +537,37 @@ export class AssistantView extends LitElement {
         .mic-toggle-button.inactive svg {
             stroke: #ff3b30 !important;
         }
+
+        .analyze-screen-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+        }
+
+        .analyze-screen-btn {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            color: #a78bfa;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .analyze-screen-btn:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35));
+            border-color: rgba(139, 92, 246, 0.6);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .analyze-screen-btn:active {
+            transform: scale(0.98);
+        }
     `;
 
     static properties = {
@@ -548,6 +581,7 @@ export class AssistantView extends LitElement {
         copiedFeedback: { type: Boolean },
         micEnabled: { type: Boolean },
         vadMode: { type: String },
+        onAnalyzeScreen: { type: Function },
     };
 
     constructor() {
@@ -563,6 +597,7 @@ export class AssistantView extends LitElement {
         this.micEnabled = false;
         // Load VAD mode from localStorage
         this.vadMode = localStorage.getItem('vadMode') || 'automatic';
+        this.onAnalyzeScreen = () => {};
         // Load saved responses from localStorage
         try {
             this.savedResponses = JSON.parse(localStorage.getItem('savedResponses') || '[]');
@@ -576,7 +611,7 @@ export class AssistantView extends LitElement {
 
     setupVADModeListener() {
         // Listen for localStorage changes from settings
-        window.addEventListener('storage', (e) => {
+        window.addEventListener('storage', e => {
             if (e.key === 'vadMode') {
                 this.vadMode = e.newValue || 'automatic';
 
@@ -599,6 +634,7 @@ export class AssistantView extends LitElement {
             meeting: 'Business Meeting',
             presentation: 'Presentation',
             negotiation: 'Negotiation',
+            'exam-groq': 'Exam Assistant',
             exam: 'Exam Assistant',
         };
     }
@@ -615,9 +651,9 @@ export class AssistantView extends LitElement {
             'en-IN': `Hey, I'm listening to your ${profileName}`,
             'es-ES': `Hola, estoy escuchando tu ${profileName === 'Job Interview' ? 'Entrevista de Trabajo' : profileName === 'Sales Call' ? 'Llamada de Ventas' : profileName === 'Business Meeting' ? 'Reunión de Negocios' : profileName === 'Presentation' ? 'Presentación' : profileName === 'Negotiation' ? 'Negociación' : 'Asistente de Examen'}`,
             'es-US': `Hola, estoy escuchando tu ${profileName === 'Job Interview' ? 'Entrevista de Trabajo' : profileName === 'Sales Call' ? 'Llamada de Ventas' : profileName === 'Business Meeting' ? 'Reunión de Negocios' : profileName === 'Presentation' ? 'Presentación' : profileName === 'Negotiation' ? 'Negociación' : 'Asistente de Examen'}`,
-            'fr-FR': `Salut, j'écoute votre ${profileName === 'Job Interview' ? 'Entretien d\'Embauche' : profileName === 'Sales Call' ? 'Appel Commercial' : profileName === 'Business Meeting' ? 'Réunion d\'Affaires' : profileName === 'Presentation' ? 'Présentation' : profileName === 'Negotiation' ? 'Négociation' : 'Assistant d\'Examen'}`,
+            'fr-FR': `Salut, j'écoute votre ${profileName === 'Job Interview' ? "Entretien d'Embauche" : profileName === 'Sales Call' ? 'Appel Commercial' : profileName === 'Business Meeting' ? "Réunion d'Affaires" : profileName === 'Presentation' ? 'Présentation' : profileName === 'Negotiation' ? 'Négociation' : "Assistant d'Examen"}`,
             'de-DE': `Hey, ich höre deinem ${profileName === 'Job Interview' ? 'Vorstellungsgespräch' : profileName === 'Sales Call' ? 'Verkaufsgespräch' : profileName === 'Business Meeting' ? 'Geschäftstreffen' : profileName === 'Presentation' ? 'Präsentation' : profileName === 'Negotiation' ? 'Verhandlung' : 'Prüfungsassistenten'} zu`,
-            'it-IT': `Ciao, sto ascoltando il tuo ${profileName === 'Job Interview' ? 'Colloquio di Lavoro' : profileName === 'Sales Call' ? 'Chiamata di Vendita' : profileName === 'Business Meeting' ? 'Riunione d\'Affari' : profileName === 'Presentation' ? 'Presentazione' : profileName === 'Negotiation' ? 'Negoziazione' : 'Assistente d\'Esame'}`,
+            'it-IT': `Ciao, sto ascoltando il tuo ${profileName === 'Job Interview' ? 'Colloquio di Lavoro' : profileName === 'Sales Call' ? 'Chiamata di Vendita' : profileName === 'Business Meeting' ? "Riunione d'Affari" : profileName === 'Presentation' ? 'Presentazione' : profileName === 'Negotiation' ? 'Negoziazione' : "Assistente d'Esame"}`,
             'pt-BR': `Oi, estou ouvindo sua ${profileName === 'Job Interview' ? 'Entrevista de Emprego' : profileName === 'Sales Call' ? 'Chamada de Vendas' : profileName === 'Business Meeting' ? 'Reunião de Negócios' : profileName === 'Presentation' ? 'Apresentação' : profileName === 'Negotiation' ? 'Negociação' : 'Assistente de Exame'}`,
             'pt-PT': `Olá, estou a ouvir a tua ${profileName === 'Job Interview' ? 'Entrevista de Emprego' : profileName === 'Sales Call' ? 'Chamada de Vendas' : profileName === 'Business Meeting' ? 'Reunião de Negócios' : profileName === 'Presentation' ? 'Apresentação' : profileName === 'Negotiation' ? 'Negociação' : 'Assistente de Exame'}`,
             'ru-RU': `Привет, я слушаю ваше ${profileName === 'Job Interview' ? 'Собеседование' : profileName === 'Sales Call' ? 'Звонок по Продажам' : profileName === 'Business Meeting' ? 'Деловая Встреча' : profileName === 'Presentation' ? 'Презентация' : profileName === 'Negotiation' ? 'Переговоры' : 'Помощник на Экзамене'}`,
@@ -640,9 +676,7 @@ export class AssistantView extends LitElement {
     }
 
     getCurrentResponse() {
-        return this.responses.length > 0 && this.currentResponseIndex >= 0
-            ? this.responses[this.currentResponseIndex]
-            : this.getLocalizedGreeting();
+        return this.responses.length > 0 && this.currentResponseIndex >= 0 ? this.responses[this.currentResponseIndex] : this.getLocalizedGreeting();
     }
 
     renderMarkdown(content) {
@@ -654,7 +688,7 @@ export class AssistantView extends LitElement {
                     breaks: true,
                     gfm: true,
                     sanitize: false, // We trust the AI responses
-                    highlight: function(code, language) {
+                    highlight: function (code, language) {
                         // Use highlight.js for syntax highlighting if available
                         if (typeof window !== 'undefined' && window.hljs) {
                             if (language && window.hljs.getLanguage(language)) {
@@ -672,7 +706,7 @@ export class AssistantView extends LitElement {
                             }
                         }
                         return code; // Fallback to plain code
-                    }
+                    },
                 });
                 let rendered = window.marked.parse(content);
                 rendered = this.wrapWordsInSpans(rendered);
@@ -910,7 +944,8 @@ export class AssistantView extends LitElement {
         if (codeBlocks.length === 0) {
             while ((match = multiLineInlineCodeRegex.exec(text)) !== null) {
                 const codeContent = match[1].trim();
-                if (codeContent.length > 10) { // Only extract if it's reasonably long
+                if (codeContent.length > 10) {
+                    // Only extract if it's reasonably long
                     codeBlocks.push(codeContent);
                 }
             }
@@ -936,7 +971,9 @@ export class AssistantView extends LitElement {
             }
             
             // Copy to clipboard
-            navigator.clipboard.writeText(textToCopy).then(() => {
+            navigator.clipboard
+                .writeText(textToCopy)
+                .then(() => {
                 // Visual feedback - temporarily change button appearance
                 this.copiedFeedback = true;
                 this.requestUpdate();
@@ -944,7 +981,8 @@ export class AssistantView extends LitElement {
                     this.copiedFeedback = false;
                     this.requestUpdate();
                 }, 1000);
-            }).catch(err => {
+                })
+                .catch(err => {
                 console.error('Failed to copy text: ', err);
                 // Fallback for older browsers
                 const textArea = document.createElement('textarea');
@@ -967,7 +1005,6 @@ export class AssistantView extends LitElement {
             });
         }
     }
-
 
     firstUpdated() {
         super.firstUpdated();
@@ -1027,6 +1064,12 @@ export class AssistantView extends LitElement {
         return html`
             <div class="response-container" id="responseContainer"></div>
 
+            <div class="analyze-screen-container">
+                <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen} title="Capture and analyze current screen">
+                    📸 Analyze Screen & Answer
+                </button>
+            </div>
+
             <div class="text-input-container">
                 <button class="nav-button" @click=${this.navigateToPreviousResponse} ?disabled=${this.currentResponseIndex <= 0}>
                     <?xml version="1.0" encoding="UTF-8"?><svg
@@ -1067,30 +1110,91 @@ export class AssistantView extends LitElement {
                     </svg>
                 </button>
 
-                ${this.selectedProfile !== 'exam' && this.vadMode === 'manual' ? html`
-                    <button
-                        class="mic-toggle-button ${this.micEnabled ? 'active' : 'inactive'}"
-                        @click=${this.handleMicToggle}
-                    >
-                        ${this.micEnabled ? html`
+                ${this.selectedProfile !== 'exam' && this.vadMode === 'manual'
+                    ? html`
+                          <button class="mic-toggle-button ${this.micEnabled ? 'active' : 'inactive'}" @click=${this.handleMicToggle}>
+                              ${this.micEnabled
+                                  ? html`
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M19 10V12C19 15.866 15.866 19 12 19C8.13401 19 5 15.866 5 12V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M12 19V23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M8 23H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path
+                                                d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M19 10V12C19 15.866 15.866 19 12 19C8.13401 19 5 15.866 5 12V10"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M12 19V23"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M8 23H16"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
                             </svg>
-                        ` : html`
+                                    `
+                                  : html`
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M1 1L23 23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M9 9V12C9 13.6569 10.3431 15 12 15C12.9762 15 13.8416 14.5425 14.4005 13.8424" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M12 1C10.3431 1 9 2.34315 9 4V4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M15 5.5V12C15 12.3387 14.9629 12.6686 14.8934 12.9855" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M19 10V12C19 13.9585 18.2158 15.7355 16.9347 17.0165" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M5 10V12C5 15.866 8.13401 19 12 19M12 19V23M12 19M8 23H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path
+                                                d="M1 1L23 23"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M9 9V12C9 13.6569 10.3431 15 12 15C12.9762 15 13.8416 14.5425 14.4005 13.8424"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M12 1C10.3431 1 9 2.34315 9 4V4.5"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M15 5.5V12C15 12.3387 14.9629 12.6686 14.8934 12.9855"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M19 10V12C19 13.9585 18.2158 15.7355 16.9347 17.0165"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M5 10V12C5 15.866 8.13401 19 12 19M12 19V23M12 19M8 23H16"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
                             </svg>
                         `}
                     </button>
-                ` : ''}
+                      `
+                    : ''}
 
                 <input type="text" id="textInput" placeholder="Type a message to the AI..." @keydown=${this.handleTextKeydown} />
 

@@ -263,7 +263,7 @@ export class AppHeader extends LitElement {
         if (this.rateLimitEndTime && this.rateLimitEndTime > Date.now()) {
             const remaining = Math.ceil((this.rateLimitEndTime - Date.now()) / 1000);
             console.log(`[AppHeader] Starting rate limit timer for ${remaining}s`);
-
+            
             this._rateLimitInterval = setInterval(() => {
                 const now = Date.now();
                 if (!this.rateLimitEndTime || this.rateLimitEndTime <= now) {

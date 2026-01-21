@@ -4,7 +4,11 @@ import { resizeLayout } from '../../utils/windowResize.js';
 export class HelpView extends LitElement {
     static styles = css`
         * {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family:
+                'Inter',
+                -apple-system,
+                BlinkMacSystemFont,
+                sans-serif;
             cursor: default;
             user-select: none;
         }
@@ -299,9 +303,7 @@ export class HelpView extends LitElement {
                         <span>Community & Support</span>
                     </div>
                     <div class="community-links">
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://cheatingdev.in')}>
-                            🌐 Official Website
-                        </div>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://cheatingdev.in')}>🌐 Official Website</div>
                     </div>
                 </div>
 
@@ -448,8 +450,12 @@ export class HelpView extends LitElement {
                             <div class="profile-description">Guidance for business negotiations and deals</div>
                         </div>
                         <div class="profile-item">
-                            <div class="profile-name">Exam Assistant</div>
-                            <div class="profile-description">Academic assistance for test-taking and exam questions</div>
+                            <div class="profile-name">Exam Assistant (Groq) - NEW</div>
+                            <div class="profile-description">Recommended: Fast exam assistance powered by Groq API</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-name">Exam Assistant (Gemini)</div>
+                            <div class="profile-description">Academic assistance using Gemini API for test-taking</div>
                         </div>
                     </div>
                 </div>
@@ -462,7 +468,9 @@ export class HelpView extends LitElement {
                         The AI listens to conversations and provides contextual assistance based on what it hears.<br /><br />
                         <strong>Two VAD (Voice Activity Detection) Modes:</strong><br />
                         • <strong>Automatic Mode:</strong> AI continuously listens and responds automatically when speech is detected<br />
-                        • <strong>Manual Mode:</strong> You control when the microphone is active. Use ${this.formatKeybind(this.keybinds.toggleMicrophone)} to toggle the mic ON/OFF during interview sessions. When toggled OFF, the AI generates a response based on the complete recorded question.<br /><br />
+                        • <strong>Manual Mode:</strong> You control when the microphone is active. Use
+                        ${this.formatKeybind(this.keybinds.toggleMicrophone)} to toggle the mic ON/OFF during interview sessions. When toggled OFF,
+                        the AI generates a response based on the complete recorded question.<br /><br />
                     </div>
                 </div>
             </div>
