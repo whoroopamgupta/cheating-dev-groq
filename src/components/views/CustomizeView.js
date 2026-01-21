@@ -1165,23 +1165,23 @@ export class CustomizeView extends LitElement {
                         ${
                             this.selectedProfile === 'exam'
                                 ? html`
-                                      <!-- Exam Assistant mode: Only Coding/OA mode available -->
-                                      <div class="form-row">
-                                          <div class="form-group">
-                                              <label class="form-label">Mode (Fixed for Exam Assistant)</label>
+                            <!-- Exam Assistant mode: Only Coding/OA mode available -->
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Mode (Fixed for Exam Assistant)</label>
                                               <div class="mode-display-box">💻 Coding/OA Mode (Screenshot-based)</div>
-                                              <div class="form-description">
-                                                  Exam Assistant profile uses Gemini API 2.5 Flash or 2.5 Pro for better problem-solving responses.
-                                              </div>
-                                          </div>
-                                      </div>
+                                    <div class="form-description">
+                                        Exam Assistant profile uses Gemini API 2.5 Flash or 2.5 Pro for better problem-solving responses.
+                                    </div>
+                                </div>
+                            </div>
 
-                                      <div class="form-row">
-                                          <div class="form-group">
-                                              <label class="form-label">Model Selection</label>
-                                              <custom-dropdown
-                                                  .value=${this.selectedModel}
-                                                  .options=${[
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Model Selection</label>
+                                    <custom-dropdown
+                                        .value=${this.selectedModel}
+                                        .options=${[
                                                       {
                                                           value: 'gemini-2.5-flash',
                                                           label: 'Gemini 2.5 Flash (Faster, Balanced)',
@@ -1192,36 +1192,36 @@ export class CustomizeView extends LitElement {
                                                           label: 'Gemini 2.5 Pro (Slower, More Accurate)',
                                                           icon: './assets/models/500px-Google_Gemini_icon_2025.svg.png',
                                                       },
-                                                  ]}
-                                                  @change=${e => this.handleModelChange({ target: { value: e.detail.value } })}
-                                              ></custom-dropdown>
-                                              <div class="form-description">
-                                                  ${this.selectedModel === 'gemini-2.5-flash'
-                                                      ? 'Gemini 2.5 Flash: Faster responses, good for time-sensitive coding assessments.'
-                                                      : 'Gemini 2.5 Pro: More accurate and detailed responses, better for complex problems.'}
-                                              </div>
-                                          </div>
-                                      </div>
+                                        ]}
+                                        @change=${e => this.handleModelChange({ target: { value: e.detail.value } })}
+                                    ></custom-dropdown>
+                                    <div class="form-description">
+                                        ${this.selectedModel === 'gemini-2.5-flash'
+                                            ? 'Gemini 2.5 Flash: Faster responses, good for time-sensitive coding assessments.'
+                                            : 'Gemini 2.5 Pro: More accurate and detailed responses, better for complex problems.'}
+                                    </div>
+                                </div>
+                            </div>
                                   `
                                 : html`
-                                      <!-- Other profiles: Interview mode with Groq/Llama -->
-                                      <div class="form-row">
-                                          <div class="form-group">
-                                              <label class="form-label">Mode (Fixed for ${this.getProfileNames()[this.selectedProfile]})</label>
+                            <!-- Other profiles: Interview mode with Groq/Llama -->
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Mode (Fixed for ${this.getProfileNames()[this.selectedProfile]})</label>
                                               <div class="mode-display-box">🎤 Interview Mode (Real-time Audio)</div>
-                                              <div class="form-description">
+                                    <div class="form-description">
                                                   ${this.getProfileNames()[this.selectedProfile]} profile uses Groq Whisper for speech-to-text and
                                                   Llama 4 for response generation.
-                                              </div>
-                                          </div>
-                                      </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                      <div class="form-row">
-                                          <div class="form-group">
-                                              <label class="form-label">Model Selection</label>
-                                              <custom-dropdown
-                                                  .value=${this.selectedGroqModel}
-                                                  .options=${[
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Model Selection</label>
+                                    <custom-dropdown
+                                        .value=${this.selectedGroqModel}
+                                        .options=${[
                                                       {
                                                           value: 'llama-4-maverick',
                                                           label: 'Llama 4 Maverick (Fast, More Accurate)',
@@ -1232,16 +1232,16 @@ export class CustomizeView extends LitElement {
                                                           label: 'Llama 4 Scout (Faster, Balanced)',
                                                           icon: './assets/models/metalogo.dcf881ba.svg',
                                                       },
-                                                  ]}
-                                                  @change=${this.handleGroqModelChange}
-                                              ></custom-dropdown>
-                                              <div class="form-description">
-                                                  ${this.selectedGroqModel === 'llama-4-maverick'
-                                                      ? 'Llama 4 Maverick: 17B parameters with 128 experts. More accurate and detailed responses for complex questions.'
-                                                      : 'Llama 4 Scout: 17B parameters with 16 experts. Faster responses, ideal for quick interactions.'}
-                                              </div>
-                                          </div>
-                                      </div>
+                                        ]}
+                                        @change=${this.handleGroqModelChange}
+                                    ></custom-dropdown>
+                                    <div class="form-description">
+                                        ${this.selectedGroqModel === 'llama-4-maverick'
+                                            ? 'Llama 4 Maverick: 17B parameters with 128 experts. More accurate and detailed responses for complex questions.'
+                                            : 'Llama 4 Scout: 17B parameters with 16 experts. Faster responses, ideal for quick interactions.'}
+                                    </div>
+                                </div>
+                            </div>
 
                                       ${this.selectedProfile === 'exam-groq'
                                           ? html`
@@ -1303,34 +1303,34 @@ export class CustomizeView extends LitElement {
                         ${
                             this.selectedProfile === 'interview' && this.vadEnabled
                                 ? html`
-                                      <div class="form-row">
-                                          <div class="form-group">
-                                              <label class="form-label">
-                                                  VAD Control Mode
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        VAD Control Mode
                                                   <span class="current-selection"
                                                       >${this.vadMode === 'automatic' ? 'Smart Detection' : 'Manual Control'}</span
                                                   >
-                                              </label>
-                                              <custom-dropdown
-                                                  .value=${this.vadMode}
-                                                  .options=${[
-                                                      { value: 'automatic', label: 'Smart Detection (Auto)' },
+                                    </label>
+                                    <custom-dropdown
+                                        .value=${this.vadMode}
+                                        .options=${[
+                                            { value: 'automatic', label: 'Smart Detection (Auto)' },
                                                       { value: 'manual', label: 'Manual Control (Push-to-Talk)' },
-                                                  ]}
-                                                  @change=${this.handleVADModeChange}
-                                              ></custom-dropdown>
-                                          </div>
-                                      </div>
-                                      <div class="form-group full-width">
-                                          <div class="form-description">
-                                              ${this.vadMode === 'automatic'
+                                        ]}
+                                        @change=${this.handleVADModeChange}
+                                    ></custom-dropdown>
+                                </div>
+                            </div>
+                            <div class="form-group full-width">
+                                <div class="form-description">
+                                    ${this.vadMode === 'automatic'
                                                   ? html`<strong>Smart Detection:</strong> VAD automatically detects speech and silence. Best for
                                                         natural conversations where the interviewer speaks continuously.`
                                                   : html`<strong>Manual Control:</strong> Click the microphone button to start listening. VAD captures
                                                         the entire question (including pauses) until you click again to generate the response. Perfect
                                                         for interviewers who pause frequently mid-sentence.`}
-                                          </div>
-                                      </div>
+                                </div>
+                            </div>
                                   `
                                 : ''
                         }
