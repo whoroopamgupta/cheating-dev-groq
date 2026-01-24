@@ -517,6 +517,11 @@ export class CustomizeView extends LitElement {
                 description: 'Get help with answering interview questions',
             },
             {
+                value: 'product',
+                name: 'Job Interview - Product Based',
+                description: 'Product sense, estimation, strategy & metrics for PM interviews at top companies',
+            },
+            {
                 value: 'sales',
                 name: 'Sales Call',
                 description: 'Assist with sales conversations and objection handling',
@@ -545,11 +550,6 @@ export class CustomizeView extends LitElement {
                 value: 'exam',
                 name: 'Exam Assistant (Gemini)',
                 description: 'Academic assistance using Gemini API for test-taking and exam questions',
-            },
-            {
-                value: 'product',
-                name: 'Product Interview',
-                description: 'Product sense, estimation, strategy & metrics for PM interviews at top companies',
             },
         ];
     }
@@ -598,7 +598,7 @@ export class CustomizeView extends LitElement {
             negotiation: 'Negotiation',
             'exam-groq': 'Exam Assistant (Groq)',
             exam: 'Exam Assistant (Gemini)',
-            product: 'Product Interview',
+            product: 'Job Interview - Product Based',
         };
     }
 

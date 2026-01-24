@@ -669,7 +669,7 @@ export class AssistantView extends LitElement {
             negotiation: 'Negotiation',
             'exam-groq': 'Exam Assistant',
             exam: 'Exam Assistant',
-            product: 'Product Interview',
+            product: 'Job Interview - Product Based',
         };
     }
 

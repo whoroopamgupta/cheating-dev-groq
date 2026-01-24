@@ -434,6 +434,10 @@ export class HelpView extends LitElement {
                             <div class="profile-description">Get help with interview questions and responses</div>
                         </div>
                         <div class="profile-item">
+                            <div class="profile-name">Job Interview - Product Based</div>
+                            <div class="profile-description">Product sense, estimation, strategy & metrics for PM interviews</div>
+                        </div>
+                        <div class="profile-item">
                             <div class="profile-name">Sales Call</div>
                             <div class="profile-description">Assistance with sales conversations and objection handling</div>
                         </div>
@@ -456,10 +460,6 @@ export class HelpView extends LitElement {
                         <div class="profile-item">
                             <div class="profile-name">Exam Assistant (Gemini)</div>
                             <div class="profile-description">Academic assistance using Gemini API for test-taking</div>
-                        </div>
-                        <div class="profile-item">
-                            <div class="profile-name">Product Interview</div>
-                            <div class="profile-description">Product sense, estimation, strategy & metrics for PM interviews</div>
                         </div>
                     </div>
                 </div>
