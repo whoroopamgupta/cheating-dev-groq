@@ -417,6 +417,8 @@ export class MainView extends LitElement {
             profileLabel = 'Exam Assistant (Gemini)';
         } else if (this.selectedProfile === 'exam-groq') {
             profileLabel = 'Exam Assistant (Groq) - NEW';
+        } else if (this.selectedProfile === 'product') {
+            profileLabel = 'Product Interview';
         } else {
             profileLabel = 'Interview Mode';
         }

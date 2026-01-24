@@ -457,6 +457,10 @@ export class HelpView extends LitElement {
                             <div class="profile-name">Exam Assistant (Gemini)</div>
                             <div class="profile-description">Academic assistance using Gemini API for test-taking</div>
                         </div>
+                        <div class="profile-item">
+                            <div class="profile-name">Product Interview</div>
+                            <div class="profile-description">Product sense, estimation, strategy & metrics for PM interviews</div>
+                        </div>
                     </div>
                 </div>
 

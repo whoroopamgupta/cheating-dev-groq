@@ -87,23 +87,36 @@ function pcmToWav(pcmBuffer) {
     let offset = 0;
 
     // RIFF header
-    wavBuffer.write('RIFF', offset); offset += 4;
-    wavBuffer.writeUInt32LE(fileSize, offset); offset += 4;
-    wavBuffer.write('WAVE', offset); offset += 4;
+    wavBuffer.write('RIFF', offset);
+    offset += 4;
+    wavBuffer.writeUInt32LE(fileSize, offset);
+    offset += 4;
+    wavBuffer.write('WAVE', offset);
+    offset += 4;
 
     // fmt chunk
-    wavBuffer.write('fmt ', offset); offset += 4;
-    wavBuffer.writeUInt32LE(16, offset); offset += 4; // Chunk size
-    wavBuffer.writeUInt16LE(1, offset); offset += 2; // Audio format (PCM)
-    wavBuffer.writeUInt16LE(numChannels, offset); offset += 2;
-    wavBuffer.writeUInt32LE(sampleRate, offset); offset += 4;
-    wavBuffer.writeUInt32LE(byteRate, offset); offset += 4;
-    wavBuffer.writeUInt16LE(blockAlign, offset); offset += 2;
-    wavBuffer.writeUInt16LE(bitsPerSample, offset); offset += 2;
+    wavBuffer.write('fmt ', offset);
+    offset += 4;
+    wavBuffer.writeUInt32LE(16, offset);
+    offset += 4; // Chunk size
+    wavBuffer.writeUInt16LE(1, offset);
+    offset += 2; // Audio format (PCM)
+    wavBuffer.writeUInt16LE(numChannels, offset);
+    offset += 2;
+    wavBuffer.writeUInt32LE(sampleRate, offset);
+    offset += 4;
+    wavBuffer.writeUInt32LE(byteRate, offset);
+    offset += 4;
+    wavBuffer.writeUInt16LE(blockAlign, offset);
+    offset += 2;
+    wavBuffer.writeUInt16LE(bitsPerSample, offset);
+    offset += 2;
 
     // data chunk
-    wavBuffer.write('data', offset); offset += 4;
-    wavBuffer.writeUInt32LE(dataSize, offset); offset += 4;
+    wavBuffer.write('data', offset);
+    offset += 4;
+    wavBuffer.writeUInt32LE(dataSize, offset);
+    offset += 4;
 
     // Copy PCM data
     pcmBuffer.copy(wavBuffer, offset);
@@ -139,10 +152,7 @@ async function transcribeWithGroq(wavBuffer) {
 
         // Add model field
         const modelPart = Buffer.from(
-            `\r\n--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="model"\r\n\r\n` +
-            `${WHISPER_MODEL}\r\n` +
-            `--${boundary}--\r\n`
+            `\r\n--${boundary}\r\n` + `Content-Disposition: form-data; name="model"\r\n\r\n` + `${WHISPER_MODEL}\r\n` + `--${boundary}--\r\n`
         );
 
         // Combine all parts
@@ -156,16 +166,16 @@ async function transcribeWithGroq(wavBuffer) {
             path: url.pathname,
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${groqApiKey}`,
+                Authorization: `Bearer ${groqApiKey}`,
                 'Content-Type': `multipart/form-data; boundary=${boundary}`,
-                'Content-Length': requestBody.length
-            }
+                'Content-Length': requestBody.length,
+            },
         };
 
-        const req = https.request(options, (res) => {
+        const req = https.request(options, res => {
             let data = '';
 
-            res.on('data', (chunk) => {
+            res.on('data', chunk => {
                 data += chunk;
             });
 
@@ -187,9 +197,9 @@ async function transcribeWithGroq(wavBuffer) {
                 } else if (res.statusCode === 429) {
                     // Rate limit hit for Whisper
                     console.error('[GROQ WHISPER] Rate limit exceeded (429)');
-                    
+
                     let retryAfterSeconds = 60; // Default
-                    
+
                     // Check Retry-After header
                     if (res.headers['retry-after']) {
                         const parsed = parseInt(res.headers['retry-after'], 10);
@@ -197,7 +207,7 @@ async function transcribeWithGroq(wavBuffer) {
                             retryAfterSeconds = parsed;
                         }
                     }
-                    
+
                     // Try to parse from response body
                     try {
                         const errorBody = JSON.parse(data);
@@ -208,15 +218,15 @@ async function transcribeWithGroq(wavBuffer) {
                             }
                         }
                     } catch (e) {}
-                    
+
                     console.log(`[GROQ WHISPER] Rate limited for ${retryAfterSeconds} seconds`);
-                    
+
                     sendToRenderer('rate-limit-hit', {
                         retryAfterSeconds: retryAfterSeconds,
-                        source: 'Groq'
+                        source: 'Groq',
                     });
                     sendToRenderer('update-status', `Rate limited (${retryAfterSeconds}s)`);
-                    
+
                     reject(new Error(`Groq Whisper rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
                     console.error('[GROQ] API Error:', res.statusCode, data);
@@ -225,7 +235,7 @@ async function transcribeWithGroq(wavBuffer) {
             });
         });
 
-        req.on('error', (e) => {
+        req.on('error', e => {
             console.error('[GROQ] Request error:', e);
             reject(e);
         });
@@ -304,27 +314,28 @@ async function checkAndFlush() {
     // Time-based speech end detection (handles push-to-talk mode where mic turns off)
     // If enough time has passed since last speech, mark speaking as ended
     if (isSpeaking && timeSinceSpeech >= SILENCE_AFTER_SPEECH_MS) {
-        console.log(`[GROQ] No audio for ${(timeSinceSpeech/1000).toFixed(1)}s - marking speech ended`);
+        console.log(`[GROQ] No audio for ${(timeSinceSpeech / 1000).toFixed(1)}s - marking speech ended`);
         isSpeaking = false;
     }
 
     // Log status occasionally
     if (speechDuration >= 1) {
-        console.log(`[GROQ] Speech buffer: ${speechDuration.toFixed(1)}s | Silence: ${(timeSinceSpeech/1000).toFixed(1)}s | Speaking: ${isSpeaking}`);
+        console.log(
+            `[GROQ] Speech buffer: ${speechDuration.toFixed(1)}s | Silence: ${(timeSinceSpeech / 1000).toFixed(1)}s | Speaking: ${isSpeaking}`
+        );
     }
 
     // Flush conditions:
     // 1. Have enough audio AND sustained silence after speech
     // 2. Buffer too large (>20s) - force flush
     const shouldFlush =
-        (speechDuration >= MIN_AUDIO_DURATION_SECONDS && timeSinceSpeech >= SILENCE_AFTER_SPEECH_MS && !isSpeaking) ||
-        (speechDuration > 20);
+        (speechDuration >= MIN_AUDIO_DURATION_SECONDS && timeSinceSpeech >= SILENCE_AFTER_SPEECH_MS && !isSpeaking) || speechDuration > 20;
 
     if (shouldFlush) {
         if (speechDuration > 20) {
             console.log(`[GROQ] Buffer large (${speechDuration.toFixed(1)}s) - flushing...`);
         } else {
-            console.log(`[GROQ] Speech ended ${(timeSinceSpeech/1000).toFixed(1)}s ago - flushing...`);
+            console.log(`[GROQ] Speech ended ${(timeSinceSpeech / 1000).toFixed(1)}s ago - flushing...`);
         }
         await processAudioBuffer();
     }
@@ -493,7 +504,7 @@ function isGroqInitialized() {
 // Llama text generation configuration
 const LLAMA_MODELS = {
     'llama-4-maverick': 'meta-llama/llama-4-maverick-17b-128e-instruct',
-    'llama-4-scout': 'meta-llama/llama-4-scout-17b-16e-instruct'
+    'llama-4-scout': 'meta-llama/llama-4-scout-17b-16e-instruct',
 };
 
 // Default to Maverick
@@ -541,7 +552,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         if (currentSystemPrompt) {
             messages.push({
                 role: 'system',
-                content: currentSystemPrompt
+                content: currentSystemPrompt,
             });
         }
 
@@ -554,7 +565,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         // Add text content
         userContent.push({
             type: 'text',
-            text: userMessage
+            text: userMessage,
         });
 
         // Add image if provided (for vision-capable models)
@@ -562,14 +573,14 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             userContent.push({
                 type: 'image_url',
                 image_url: {
-                    url: `data:image/jpeg;base64,${imageBase64}`
-                }
+                    url: `data:image/jpeg;base64,${imageBase64}`,
+                },
             });
         }
 
         messages.push({
             role: 'user',
-            content: userContent.length === 1 ? userMessage : userContent
+            content: userContent.length === 1 ? userMessage : userContent,
         });
 
         const requestBody = JSON.stringify({
@@ -577,7 +588,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             messages: messages,
             temperature: 0.7,
             max_tokens: 4096,
-            stream: true // Enable streaming for faster perceived response
+            stream: true, // Enable streaming for faster perceived response
         });
 
         const url = new URL(`${GROQ_API_BASE}/chat/completions`);
@@ -588,17 +599,17 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             path: url.pathname,
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${groqApiKey}`,
+                Authorization: `Bearer ${groqApiKey}`,
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(requestBody)
-            }
+                'Content-Length': Buffer.byteLength(requestBody),
+            },
         };
 
         let fullResponse = '';
         let buffer = '';
 
-        const req = https.request(options, (res) => {
-            res.on('data', (chunk) => {
+        const req = https.request(options, res => {
+            res.on('data', chunk => {
                 buffer += chunk.toString();
 
                 // Process complete SSE messages
@@ -647,10 +658,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                         console.log('========================================\n');
 
                         // Save to conversation history
-                        conversationHistory.push(
-                            { role: 'user', content: userMessage },
-                            { role: 'assistant', content: fullResponse }
-                        );
+                        conversationHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: fullResponse });
 
                         // Limit history to last 10 exchanges to prevent context overflow
                         if (conversationHistory.length > 20) {
@@ -668,10 +676,10 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                 } else if (res.statusCode === 429) {
                     // Rate limit hit - extract retry delay
                     console.error('[GROQ LLAMA] API Error: 429 - Rate limit exceeded');
-                    
+
                     // Try to extract retry-after from headers or response body
                     let retryAfterSeconds = 60; // Default to 60 seconds
-                    
+
                     // Check Retry-After header
                     if (res.headers['retry-after']) {
                         const headerValue = res.headers['retry-after'];
@@ -680,7 +688,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                             retryAfterSeconds = parsed;
                         }
                     }
-                    
+
                     // Try to parse from response body
                     try {
                         const errorBody = JSON.parse(buffer);
@@ -694,9 +702,9 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                     } catch (e) {
                         // Ignore parse errors
                     }
-                    
+
                     console.log(`[GROQ LLAMA] Rate limited for ${retryAfterSeconds} seconds`);
-                    
+
                     // Notify renderer about rate limit with pending request for auto-retry
                     sendToRenderer('rate-limit-hit', {
                         retryAfterSeconds: retryAfterSeconds,
@@ -704,11 +712,11 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                         pendingRequest: {
                             type: 'groq-generate',
                             message: userMessage,
-                            imageBase64: imageBase64
-                        }
+                            imageBase64: imageBase64,
+                        },
                     });
                     sendToRenderer('update-status', `Rate limited (${retryAfterSeconds}s)`);
-                    
+
                     reject(new Error(`Groq Llama API rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
                     console.error('[GROQ LLAMA] API Error:', res.statusCode, buffer);
@@ -718,7 +726,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             });
         });
 
-        req.on('error', (e) => {
+        req.on('error', e => {
             console.error('[GROQ LLAMA] Request error:', e);
             sendToRenderer('update-status', 'Error');
             reject(e);
@@ -763,7 +771,7 @@ function setupGroqIpcHandlers() {
         }
     });
 
-    ipcMain.handle('groq-process-audio', async (event) => {
+    ipcMain.handle('groq-process-audio', async event => {
         try {
             const transcription = await processAudioBuffer();
             return { success: true, transcription };
@@ -773,7 +781,7 @@ function setupGroqIpcHandlers() {
         }
     });
 
-    ipcMain.handle('groq-flush-audio', async (event) => {
+    ipcMain.handle('groq-flush-audio', async event => {
         try {
             const transcription = await flushAudioBuffer();
             return { success: true, transcription };
@@ -783,7 +791,7 @@ function setupGroqIpcHandlers() {
         }
     });
 
-    ipcMain.handle('groq-clear-audio', async (event) => {
+    ipcMain.handle('groq-clear-audio', async event => {
         clearAudioBuffer();
         return { success: true };
     });
@@ -809,9 +817,26 @@ function setupGroqIpcHandlers() {
         }
     });
 
-    ipcMain.handle('groq-clear-history', async (event) => {
+    ipcMain.handle('groq-clear-history', async event => {
         clearConversationHistory();
         return { success: true };
+    });
+
+    // Handler for "Go Deeper" / "Break Down Further" in Product Interview mode
+    ipcMain.handle('groq-elaborate-response', async (event, { prompt, originalResponse }) => {
+        try {
+            console.log('[GROQ] Elaborating response for Product Interview mode');
+            console.log('[GROQ] Prompt length:', prompt.length);
+            sendToRenderer('update-status', 'Breaking down further...');
+
+            // Generate a more detailed breakdown using the elaboration prompt
+            const elaboratedResponse = await generateWithLlama(prompt, null);
+            console.log('[GROQ] Elaboration complete, response length:', elaboratedResponse?.length || 0);
+            return { success: true, response: elaboratedResponse };
+        } catch (error) {
+            console.error('[GROQ] Elaborate response error:', error);
+            return { success: false, error: error.message };
+        }
     });
 
     console.log('[GROQ] IPC handlers registered');
@@ -832,5 +857,5 @@ module.exports = {
     // Llama text generation
     setLlamaConfig,
     generateWithLlama,
-    clearConversationHistory
+    clearConversationHistory,
 };

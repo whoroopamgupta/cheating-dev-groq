@@ -513,7 +513,7 @@ export class CheatingDaddyApp extends LitElement {
             this._currentQuestion = ''; // Clear current question
             // Only auto-navigate if user was viewing the latest response
             if (isViewingLatest) {
-            this.currentResponseIndex = this.responses.length - 1;
+                this.currentResponseIndex = this.responses.length - 1;
             }
             this._awaitingNewResponse = false;
             this._currentResponseIsComplete = false;
@@ -538,7 +538,7 @@ export class CheatingDaddyApp extends LitElement {
             this._currentQuestion = ''; // Clear current question
             // Only auto-navigate if user was viewing the latest response
             if (isViewingLatest) {
-            this.currentResponseIndex = this.responses.length - 1;
+                this.currentResponseIndex = this.responses.length - 1;
             }
             this._currentResponseIsComplete = false;
             console.log('[setResponse] Added response as new:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
@@ -641,21 +641,21 @@ export class CheatingDaddyApp extends LitElement {
         // Stop exam-groq auto-capture if running
         this.stopExamGroqAutoCapture();
 
-            cheddar.stopCapture();
+        cheddar.stopCapture();
 
-            // Close the session
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                await ipcRenderer.invoke('close-session');
-            }
-            this.sessionActive = false;
-            this.currentView = 'main';
+        // Close the session
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('close-session');
+        }
+        this.sessionActive = false;
+        this.currentView = 'main';
 
         // Clear session data
         this._sessionQuestions = [];
         this._currentQuestion = '';
 
-            console.log('Session closed');
+        console.log('Session closed');
     }
 
     // Close session and go to conversation history
@@ -671,8 +671,8 @@ export class CheatingDaddyApp extends LitElement {
         cheddar.stopCapture();
 
         // Close the session
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('close-session');
         }
         this.sessionActive = false;
@@ -702,7 +702,7 @@ export class CheatingDaddyApp extends LitElement {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('close-session');
-            }
+        }
         this.sessionActive = false;
 
         // Clear session data
@@ -743,6 +743,77 @@ export class CheatingDaddyApp extends LitElement {
         } else {
             console.error('[AnalyzeScreen] captureManualScreenshot not available');
             this.setStatus('Feature unavailable');
+        }
+    }
+
+    async handleGoDeeper() {
+        console.log('[GoDeeper] Request for more detailed breakdown');
+
+        // Only works for product profile
+        if (this.selectedProfile !== 'product') {
+            console.log('[GoDeeper] Only available for Product Interview mode');
+            return;
+        }
+
+        // Get the current response to elaborate on
+        const currentResponse = this.responses[this.currentResponseIndex];
+        if (!currentResponse) {
+            console.log('[GoDeeper] No response to elaborate on');
+            this.setStatus('No response to break down');
+            return;
+        }
+
+        try {
+            this.setStatus('Breaking down further...');
+
+            // Create a prompt asking for more detailed breakdown
+            const elaborationPrompt = `The user wants a MORE DETAILED breakdown of the previous answer. 
+
+PREVIOUS ANSWER:
+${currentResponse}
+
+Please provide a MUCH MORE DETAILED version with:
+1. **More granular segmentation** - Break down into additional sub-segments (e.g., if you did urban/rural, now add chain vs independent, or by region)
+2. **Show ALL the math** - Every calculation step-by-step
+3. **Add sensitivity analysis** - What if assumptions were different? (e.g., "If we assume 1 per 4,000 instead of 5,000...")
+4. **Cross-validation** - Compare with alternative approaches (bottom-up, comparable markets)
+5. **Key factors discussion** - What drives the estimate up or down?
+
+Keep the same structured format but go DEEPER with more detail, more segments, and more thorough analysis.`;
+
+            // Send to Groq for elaboration via IPC
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+
+                console.log('[GoDeeper] Sending elaboration request...');
+
+                // Get the elaborated response from Llama
+                const result = await ipcRenderer.invoke('groq-elaborate-response', {
+                    prompt: elaborationPrompt,
+                    originalResponse: currentResponse,
+                });
+
+                console.log('[GoDeeper] Result received:', result?.success, 'Response length:', result?.response?.length || 0);
+
+                if (result && result.success && result.response) {
+                    // Add as a new response
+                    this.responses.push(result.response);
+                    this.currentResponseIndex = this.responses.length - 1;
+                    this.shouldAnimateResponse = true;
+                    this.requestUpdate();
+                    this.setStatus('Detailed breakdown ready');
+                    console.log('[GoDeeper] Elaborated response added to responses');
+                } else {
+                    console.error('[GoDeeper] Failed:', result?.error || 'No response received');
+                    this.setStatus('Could not elaborate');
+                }
+            } else {
+                console.error('[GoDeeper] window.require not available');
+                this.setStatus('Feature unavailable');
+            }
+        } catch (error) {
+            console.error('[GoDeeper] Error:', error);
+            this.setStatus('Error elaborating');
         }
     }
 
@@ -1203,6 +1274,7 @@ export class CheatingDaddyApp extends LitElement {
                         .selectedLanguage=${this.selectedLanguage}
                         .onSendText=${message => this.handleSendText(message)}
                         .onAnalyzeScreen=${() => this.handleAnalyzeScreen()}
+                        .onGoDeeper=${() => this.handleGoDeeper()}
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
                         @response-animation-complete=${() => {
