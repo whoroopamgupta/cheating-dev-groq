@@ -513,7 +513,7 @@ export class CheatingDaddyApp extends LitElement {
             this._currentQuestion = ''; // Clear current question
             // Only auto-navigate if user was viewing the latest response
             if (isViewingLatest) {
-                this.currentResponseIndex = this.responses.length - 1;
+            this.currentResponseIndex = this.responses.length - 1;
             }
             this._awaitingNewResponse = false;
             this._currentResponseIsComplete = false;
@@ -538,7 +538,7 @@ export class CheatingDaddyApp extends LitElement {
             this._currentQuestion = ''; // Clear current question
             // Only auto-navigate if user was viewing the latest response
             if (isViewingLatest) {
-                this.currentResponseIndex = this.responses.length - 1;
+            this.currentResponseIndex = this.responses.length - 1;
             }
             this._currentResponseIsComplete = false;
             console.log('[setResponse] Added response as new:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
@@ -641,21 +641,21 @@ export class CheatingDaddyApp extends LitElement {
         // Stop exam-groq auto-capture if running
         this.stopExamGroqAutoCapture();
 
-        cheddar.stopCapture();
+            cheddar.stopCapture();
 
-        // Close the session
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            await ipcRenderer.invoke('close-session');
-        }
-        this.sessionActive = false;
-        this.currentView = 'main';
+            // Close the session
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                await ipcRenderer.invoke('close-session');
+            }
+            this.sessionActive = false;
+            this.currentView = 'main';
 
         // Clear session data
         this._sessionQuestions = [];
         this._currentQuestion = '';
 
-        console.log('Session closed');
+            console.log('Session closed');
     }
 
     // Close session and go to conversation history
@@ -671,8 +671,8 @@ export class CheatingDaddyApp extends LitElement {
         cheddar.stopCapture();
 
         // Close the session
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('close-session');
         }
         this.sessionActive = false;
@@ -702,7 +702,7 @@ export class CheatingDaddyApp extends LitElement {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('close-session');
-        }
+            }
         this.sessionActive = false;
 
         // Clear session data

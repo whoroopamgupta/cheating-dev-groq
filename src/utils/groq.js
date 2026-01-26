@@ -197,9 +197,9 @@ async function transcribeWithGroq(wavBuffer) {
                 } else if (res.statusCode === 429) {
                     // Rate limit hit for Whisper
                     console.error('[GROQ WHISPER] Rate limit exceeded (429)');
-
+                    
                     let retryAfterSeconds = 60; // Default
-
+                    
                     // Check Retry-After header
                     if (res.headers['retry-after']) {
                         const parsed = parseInt(res.headers['retry-after'], 10);
@@ -207,7 +207,7 @@ async function transcribeWithGroq(wavBuffer) {
                             retryAfterSeconds = parsed;
                         }
                     }
-
+                    
                     // Try to parse from response body
                     try {
                         const errorBody = JSON.parse(data);
@@ -218,15 +218,15 @@ async function transcribeWithGroq(wavBuffer) {
                             }
                         }
                     } catch (e) {}
-
+                    
                     console.log(`[GROQ WHISPER] Rate limited for ${retryAfterSeconds} seconds`);
-
+                    
                     sendToRenderer('rate-limit-hit', {
                         retryAfterSeconds: retryAfterSeconds,
                         source: 'Groq',
                     });
                     sendToRenderer('update-status', `Rate limited (${retryAfterSeconds}s)`);
-
+                    
                     reject(new Error(`Groq Whisper rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
                     console.error('[GROQ] API Error:', res.statusCode, data);
@@ -676,10 +676,10 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                 } else if (res.statusCode === 429) {
                     // Rate limit hit - extract retry delay
                     console.error('[GROQ LLAMA] API Error: 429 - Rate limit exceeded');
-
+                    
                     // Try to extract retry-after from headers or response body
                     let retryAfterSeconds = 60; // Default to 60 seconds
-
+                    
                     // Check Retry-After header
                     if (res.headers['retry-after']) {
                         const headerValue = res.headers['retry-after'];
@@ -688,7 +688,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                             retryAfterSeconds = parsed;
                         }
                     }
-
+                    
                     // Try to parse from response body
                     try {
                         const errorBody = JSON.parse(buffer);
@@ -702,9 +702,9 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                     } catch (e) {
                         // Ignore parse errors
                     }
-
+                    
                     console.log(`[GROQ LLAMA] Rate limited for ${retryAfterSeconds} seconds`);
-
+                    
                     // Notify renderer about rate limit with pending request for auto-retry
                     sendToRenderer('rate-limit-hit', {
                         retryAfterSeconds: retryAfterSeconds,
@@ -716,7 +716,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                         },
                     });
                     sendToRenderer('update-status', `Rate limited (${retryAfterSeconds}s)`);
-
+                    
                     reject(new Error(`Groq Llama API rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
                     console.error('[GROQ LLAMA] API Error:', res.statusCode, buffer);

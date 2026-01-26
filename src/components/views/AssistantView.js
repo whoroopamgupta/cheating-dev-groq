@@ -150,7 +150,7 @@ export class AssistantView extends LitElement {
         }
 
         /* VS Code Syntax Highlighting Colors */
-
+        
         /* Keywords (blue) */
         .response-container .hljs-keyword,
         .response-container .hljs-selector-tag,
@@ -259,7 +259,7 @@ export class AssistantView extends LitElement {
         }
 
         /* Language-specific enhancements */
-
+        
         /* JavaScript/TypeScript */
         .response-container .hljs-keyword.hljs-return,
         .response-container .hljs-keyword.hljs-function,
@@ -786,7 +786,7 @@ export class AssistantView extends LitElement {
     enhanceCodeBlocks(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-
+        
         // Find all pre elements and enhance them
         const preElements = doc.querySelectorAll('pre');
         preElements.forEach(pre => {
@@ -795,21 +795,21 @@ export class AssistantView extends LitElement {
                 // Extract language from class (hljs adds language-specific classes)
                 const classList = Array.from(codeElement.classList);
                 const languageClass = classList.find(cls => cls.startsWith('language-')) || classList.find(cls => cls !== 'hljs');
-
+                
                 if (languageClass) {
                     const language = languageClass.replace('language-', '').replace('hljs-', '');
                     if (language && language !== 'hljs') {
                         pre.setAttribute('data-language', language);
                     }
                 }
-
+                
                 // Add hljs class to pre element for consistent styling
                 if (codeElement.classList.contains('hljs') || classList.some(cls => cls.startsWith('language-'))) {
                     pre.classList.add('hljs');
                 }
             }
         });
-
+        
         return doc.body.innerHTML;
     }
 
@@ -993,7 +993,7 @@ export class AssistantView extends LitElement {
         if (currentResponse) {
             // Extract code blocks from the response
             const codeBlocks = this.extractCodeBlocks(currentResponse);
-
+            
             // Determine what to copy
             let textToCopy;
             if (codeBlocks.length > 0) {
@@ -1003,40 +1003,40 @@ export class AssistantView extends LitElement {
                 // Fallback to full response if no code blocks found
                 textToCopy = currentResponse;
             }
-
+            
             // Copy to clipboard
             navigator.clipboard
                 .writeText(textToCopy)
                 .then(() => {
-                    // Visual feedback - temporarily change button appearance
+                // Visual feedback - temporarily change button appearance
+                this.copiedFeedback = true;
+                this.requestUpdate();
+                setTimeout(() => {
+                    this.copiedFeedback = false;
+                    this.requestUpdate();
+                }, 1000);
+                })
+                .catch(err => {
+                console.error('Failed to copy text: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
                     this.copiedFeedback = true;
                     this.requestUpdate();
                     setTimeout(() => {
                         this.copiedFeedback = false;
                         this.requestUpdate();
                     }, 1000);
-                })
-                .catch(err => {
-                    console.error('Failed to copy text: ', err);
-                    // Fallback for older browsers
-                    const textArea = document.createElement('textarea');
-                    textArea.value = textToCopy;
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                        this.copiedFeedback = true;
-                        this.requestUpdate();
-                        setTimeout(() => {
-                            this.copiedFeedback = false;
-                            this.requestUpdate();
-                        }, 1000);
-                    } catch (err) {
-                        console.error('Fallback: Unable to copy', err);
-                    }
-                    document.body.removeChild(textArea);
-                });
+                } catch (err) {
+                    console.error('Fallback: Unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+            });
         }
     }
 
@@ -1161,7 +1161,7 @@ export class AssistantView extends LitElement {
                           <button class="mic-toggle-button ${this.micEnabled ? 'active' : 'inactive'}" @click=${this.handleMicToggle}>
                               ${this.micEnabled
                                   ? html`
-                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z"
                                                 stroke="currentColor"
@@ -1190,10 +1190,10 @@ export class AssistantView extends LitElement {
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                             />
-                                        </svg>
+                            </svg>
                                     `
                                   : html`
-                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M1 1L23 23"
                                                 stroke="currentColor"
@@ -1236,9 +1236,9 @@ export class AssistantView extends LitElement {
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                             />
-                                        </svg>
-                                    `}
-                          </button>
+                            </svg>
+                        `}
+                    </button>
                       `
                     : ''}
 
