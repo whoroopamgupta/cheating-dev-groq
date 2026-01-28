@@ -23,13 +23,11 @@ export class AssistantView extends LitElement {
             padding: 16px;
             scroll-behavior: smooth;
             user-select: text;
-            cursor: text;
         }
 
         /* Allow text selection for all content within the response container */
         .response-container * {
             user-select: text;
-            cursor: text;
         }
 
         /* Restore default cursor for interactive elements */
