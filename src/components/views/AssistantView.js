@@ -1071,7 +1071,7 @@ export class AssistantView extends LitElement {
             this._lastAnimatedWordCount = words.length;
 
             // Auto-scroll to bottom as new content arrives
-            this.scrollToBottom();
+            // this.scrollToBottom();
         } else {
             console.log('Response container not found');
         }
