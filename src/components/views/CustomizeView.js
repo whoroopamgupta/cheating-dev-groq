@@ -1030,6 +1030,7 @@ export class CustomizeView extends LitElement {
         root.style.setProperty('--screen-option-background', `rgba(0, 0, 0, ${this.backgroundTransparency * 0.5})`);
         root.style.setProperty('--screen-option-hover-background', `rgba(0, 0, 0, ${this.backgroundTransparency * 0.75})`);
         root.style.setProperty('--scrollbar-background', `rgba(0, 0, 0, ${this.backgroundTransparency * 0.5})`);
+        root.style.setProperty('--modal-overlay-background', `rgba(0, 0, 0, ${this.backgroundTransparency * 0.7})`);
     }
 
     loadFontTransparency() {

@@ -115,7 +115,7 @@ export class CheatingDaddyApp extends LitElement {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--modal-overlay-background, rgba(0, 0, 0, 0.7));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -513,7 +513,7 @@ export class CheatingDaddyApp extends LitElement {
             this._currentQuestion = ''; // Clear current question
             // Only auto-navigate if user was viewing the latest response
             if (isViewingLatest) {
-            this.currentResponseIndex = this.responses.length - 1;
+                this.currentResponseIndex = this.responses.length - 1;
             }
             this._awaitingNewResponse = false;
             this._currentResponseIsComplete = false;
@@ -538,7 +538,7 @@ export class CheatingDaddyApp extends LitElement {
             this._currentQuestion = ''; // Clear current question
             // Only auto-navigate if user was viewing the latest response
             if (isViewingLatest) {
-            this.currentResponseIndex = this.responses.length - 1;
+                this.currentResponseIndex = this.responses.length - 1;
             }
             this._currentResponseIsComplete = false;
             console.log('[setResponse] Added response as new:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
@@ -641,21 +641,21 @@ export class CheatingDaddyApp extends LitElement {
         // Stop exam-groq auto-capture if running
         this.stopExamGroqAutoCapture();
 
-            cheddar.stopCapture();
+        cheddar.stopCapture();
 
-            // Close the session
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                await ipcRenderer.invoke('close-session');
-            }
-            this.sessionActive = false;
-            this.currentView = 'main';
+        // Close the session
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('close-session');
+        }
+        this.sessionActive = false;
+        this.currentView = 'main';
 
         // Clear session data
         this._sessionQuestions = [];
         this._currentQuestion = '';
 
-            console.log('Session closed');
+        console.log('Session closed');
     }
 
     // Close session and go to conversation history
@@ -671,8 +671,8 @@ export class CheatingDaddyApp extends LitElement {
         cheddar.stopCapture();
 
         // Close the session
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('close-session');
         }
         this.sessionActive = false;
@@ -702,7 +702,7 @@ export class CheatingDaddyApp extends LitElement {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('close-session');
-            }
+        }
         this.sessionActive = false;
 
         // Clear session data
@@ -1216,9 +1216,9 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         .onLoginSuccess=${user => this.handleLoginSuccess(user)}
                         .logoutMessage=${this.logoutMessage}
                         .onClearLogoutMessage=${() => {
-                            this.logoutMessage = '';
-                            this.requestUpdate();
-                        }}
+                        this.logoutMessage = '';
+                        this.requestUpdate();
+                    }}
                     ></login-view>
                 `;
 
@@ -1278,11 +1278,11 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
                         @response-animation-complete=${() => {
-                            this.shouldAnimateResponse = false;
-                            this._currentResponseIsComplete = true;
-                            console.log('[response-animation-complete] Marked current response as complete');
-                            this.requestUpdate();
-                        }}
+                        this.shouldAnimateResponse = false;
+                        this._currentResponseIsComplete = true;
+                        console.log('[response-animation-complete] Marked current response as complete');
+                        this.requestUpdate();
+                    }}
                     ></assistant-view>
                 `;
 
@@ -1292,15 +1292,14 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
     }
 
     render() {
-        const mainContentClass = `main-content ${
-            this.currentView === 'assistant'
+        const mainContentClass = `main-content ${this.currentView === 'assistant'
                 ? 'assistant-view'
                 : this.currentView === 'onboarding'
-                  ? 'onboarding-view'
-                  : this.currentView === 'login'
-                    ? 'login-view'
-                    : 'with-border'
-        }`;
+                    ? 'onboarding-view'
+                    : this.currentView === 'login'
+                        ? 'login-view'
+                        : 'with-border'
+            }`;
 
         // Hide header on login view
         const showHeader = this.currentView !== 'login';
@@ -1309,7 +1308,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             <div class="window-container">
                 <div class="container">
                     ${showHeader
-                        ? html`
+                ? html`
                               <app-header
                                   .currentView=${this.currentView}
                                   .statusText=${this.statusText}
@@ -1331,7 +1330,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                   ?isClickThrough=${this._isClickThrough}
                               ></app-header>
                           `
-                        : ''}
+                : ''}
                     <div class="${mainContentClass}">
                         <div class="view-container">${this.renderCurrentView()}</div>
                     </div>
