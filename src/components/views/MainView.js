@@ -73,7 +73,7 @@ export class MainView extends LitElement {
 
         .start-button {
             background: var(--start-button-background);
-            color: var(--start-button-color);
+            color: var(--start-button-color, black);
             border: 1px solid var(--start-button-border);
             padding: 8px 16px;
             border-radius: 8px;
@@ -195,13 +195,13 @@ export class MainView extends LitElement {
 
     constructor() {
         super();
-        this.onStart = () => {};
-        this.onAPIKeyHelp = () => {};
+        this.onStart = () => { };
+        this.onAPIKeyHelp = () => { };
         this.isInitializing = false;
-        this.onLayoutModeChange = () => {};
-        this.onLogout = () => {};
+        this.onLayoutModeChange = () => { };
+        this.onLogout = () => { };
         this.showApiKeyError = false;
-        this.onClearAndRestart = () => {};
+        this.onClearAndRestart = () => { };
         this.boundKeydownHandler = this.handleKeydown.bind(this);
         // Load selected profile from localStorage (default to interview on first run)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';

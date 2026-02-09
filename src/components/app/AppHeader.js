@@ -43,13 +43,13 @@ export class AppHeader extends LitElement {
 
         .model-badge.interview {
             background: rgba(52, 211, 153, 0.15);
-            color: #34d399;
+            color: var(--model-badge-interview-color, #34d399);
             border-color: rgba(52, 211, 153, 0.3);
         }
 
         .model-badge.coding {
             background: rgba(251, 146, 60, 0.15);
-            color: #fb923c;
+            color: var(--model-badge-coding-color, #fb923c);
             border-color: rgba(251, 146, 60, 0.3);
         }
 
@@ -174,21 +174,21 @@ export class AppHeader extends LitElement {
         this.startTime = null;
         this.currentMode = 'interview';
         this.currentModel = '';
-        this.onCustomizeClick = () => {};
-        this.onHelpClick = () => {};
-        this.onHistoryClick = () => {};
-        this.onCloseClick = () => {};
-        this.onBackClick = () => {};
-        this.onHideToggleClick = () => {};
-        this.onRestartClick = () => {};
+        this.onCustomizeClick = () => { };
+        this.onHelpClick = () => { };
+        this.onHistoryClick = () => { };
+        this.onCloseClick = () => { };
+        this.onBackClick = () => { };
+        this.onHideToggleClick = () => { };
+        this.onRestartClick = () => { };
         this.isClickThrough = false;
         this.advancedMode = false;
-        this.onAdvancedClick = () => {};
+        this.onAdvancedClick = () => { };
         this._timerInterval = null;
         // Rate limiting
         this.rateLimitEndTime = null;
         this.rateLimitSource = null;
-        this.onRateLimitExpired = () => {};
+        this.onRateLimitExpired = () => { };
         this._rateLimitInterval = null;
     }
 
@@ -263,7 +263,7 @@ export class AppHeader extends LitElement {
         if (this.rateLimitEndTime && this.rateLimitEndTime > Date.now()) {
             const remaining = Math.ceil((this.rateLimitEndTime - Date.now()) / 1000);
             console.log(`[AppHeader] Starting rate limit timer for ${remaining}s`);
-            
+
             this._rateLimitInterval = setInterval(() => {
                 const now = Date.now();
                 if (!this.rateLimitEndTime || this.rateLimitEndTime <= now) {
@@ -372,31 +372,20 @@ export class AppHeader extends LitElement {
                 <div class="header-title">
                     ${this.getViewTitle()}
                     ${modelName && this.currentView === 'assistant'
-                        ? html`<span class="model-badge ${this.getModelBadgeClass()}">${modelName}</span>`
-                        : ''}
+                ? '' // Model badge removed in assistant view
+                : ''}
                 </div>
                 <div class="header-actions">
                     ${rateLimitCountdown && this.currentView === 'assistant'
-                        ? html`
-                              <div class="rate-limit-badge">
-                                  <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                      <circle cx="12" cy="12" r="10"></circle>
-                                      <polyline points="12 6 12 12 16 14"></polyline>
-                                  </svg>
-                                  <span>${this.rateLimitSource} cooldown: ${rateLimitCountdown}</span>
-                              </div>
-                          `
-                        : ''}
+                ? '' // Rate limit badge removed in assistant view
+                : ''}
                     ${this.currentView === 'assistant'
-                        ? html`
-                              <span>${elapsedTime}</span>
-                              <span>${this.statusText}</span>
-                          `
-                        : ''}
+                ? '' // Timer and status removed in assistant view
+                : ''}
                     ${this.currentView === 'main'
-                        ? html`
+                ? html`
                               ${this.advancedMode
-                                  ? html`
+                        ? html`
                                         <button class="icon-button" @click=${this.onAdvancedClick}>
                                             <?xml version="1.0" encoding="UTF-8"?><svg
                                                 width="24px"
@@ -439,7 +428,7 @@ export class AppHeader extends LitElement {
                                             </svg>
                                         </button>
                                     `
-                                  : ''}
+                        : ''}
                               <button class="icon-button" @click=${this.onCustomizeClick}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -533,17 +522,9 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                        : ''}
+                : ''}
                     ${this.currentView === 'assistant'
-                        ? html`
-                              <button @click=${this.onHideToggleClick} class="button">
-                                  Hide&nbsp;&nbsp;<span class="key" style="pointer-events: none;">${cheddar.isMacOS ? 'Cmd' : 'Ctrl'}</span
-                                  >&nbsp;&nbsp;<span class="key">&bsol;</span>
-                              </button>
-                              <button @click=${this.onRestartClick} class="button">
-                                  Restart session&nbsp;&nbsp;<span class="key" style="pointer-events: none;">${cheddar.isMacOS ? 'Cmd' : 'Ctrl'}</span
-                                  >+<span class="key" style="pointer-events: none;">Alt</span>+<span class="key">R</span>
-                              </button>
+                ? html`
                               <button @click=${this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -564,7 +545,7 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                        : html`
+                : html`
                               <button @click=${this.isNavigationView() ? this.onBackClick : this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"

@@ -406,8 +406,8 @@ export class AssistantView extends LitElement {
 
         .text-input-container input:focus {
             outline: none;
-            border-color: var(--focus-border-color);
-            box-shadow: 0 0 0 3px var(--focus-box-shadow);
+            border-color: transparent;
+            box-shadow: none;
             background: var(--input-focus-background);
         }
 
@@ -545,7 +545,7 @@ export class AssistantView extends LitElement {
         .analyze-screen-btn {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
             border: 1px solid rgba(139, 92, 246, 0.4);
-            color: #a78bfa;
+            color: var(--analyze-btn-text-color, #a78bfa);
             padding: 8px 14px;
             border-radius: 8px;
             font-size: 13px;
@@ -612,6 +612,7 @@ export class AssistantView extends LitElement {
         vadMode: { type: String },
         onAnalyzeScreen: { type: Function },
         onGoDeeper: { type: Function },
+        showAnalyzeButton: { type: Boolean },
     };
 
     constructor() {
@@ -620,15 +621,15 @@ export class AssistantView extends LitElement {
         this.currentResponseIndex = -1;
         this.selectedProfile = 'interview';
         this.selectedLanguage = 'en-US';
-        this.onSendText = () => {};
+        this.onSendText = () => { };
         this._lastAnimatedWordCount = 0;
         this.copiedFeedback = false;
         // Microphone starts as OFF by default (for manual mode)
         this.micEnabled = false;
         // Load VAD mode from localStorage
         this.vadMode = localStorage.getItem('vadMode') || 'automatic';
-        this.onAnalyzeScreen = () => {};
-        this.onGoDeeper = () => {};
+        this.onAnalyzeScreen = () => { };
+        this.onGoDeeper = () => { };
         // Load saved responses from localStorage
         try {
             this.savedResponses = JSON.parse(localStorage.getItem('savedResponses') || '[]');
@@ -638,6 +639,19 @@ export class AssistantView extends LitElement {
 
         // Listen for VAD mode changes
         this.setupVADModeListener();
+
+        // Load showAnalyzeButton setting
+        this.showAnalyzeButton = localStorage.getItem('showAnalyzeButton') !== 'false'; // Default true
+        this.setupShowAnalyzeButtonListener();
+    }
+
+    setupShowAnalyzeButtonListener() {
+        window.addEventListener('storage', e => {
+            if (e.key === 'showAnalyzeButton') {
+                this.showAnalyzeButton = e.newValue !== 'false';
+                this.requestUpdate();
+            }
+        });
     }
 
     setupVADModeListener() {
@@ -784,7 +798,7 @@ export class AssistantView extends LitElement {
     enhanceCodeBlocks(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        
+
         // Find all pre elements and enhance them
         const preElements = doc.querySelectorAll('pre');
         preElements.forEach(pre => {
@@ -793,21 +807,21 @@ export class AssistantView extends LitElement {
                 // Extract language from class (hljs adds language-specific classes)
                 const classList = Array.from(codeElement.classList);
                 const languageClass = classList.find(cls => cls.startsWith('language-')) || classList.find(cls => cls !== 'hljs');
-                
+
                 if (languageClass) {
                     const language = languageClass.replace('language-', '').replace('hljs-', '');
                     if (language && language !== 'hljs') {
                         pre.setAttribute('data-language', language);
                     }
                 }
-                
+
                 // Add hljs class to pre element for consistent styling
                 if (codeElement.classList.contains('hljs') || classList.some(cls => cls.startsWith('language-'))) {
                     pre.classList.add('hljs');
                 }
             }
         });
-        
+
         return doc.body.innerHTML;
     }
 
@@ -991,7 +1005,7 @@ export class AssistantView extends LitElement {
         if (currentResponse) {
             // Extract code blocks from the response
             const codeBlocks = this.extractCodeBlocks(currentResponse);
-            
+
             // Determine what to copy
             let textToCopy;
             if (codeBlocks.length > 0) {
@@ -1001,40 +1015,40 @@ export class AssistantView extends LitElement {
                 // Fallback to full response if no code blocks found
                 textToCopy = currentResponse;
             }
-            
+
             // Copy to clipboard
             navigator.clipboard
                 .writeText(textToCopy)
                 .then(() => {
-                // Visual feedback - temporarily change button appearance
-                this.copiedFeedback = true;
-                this.requestUpdate();
-                setTimeout(() => {
-                    this.copiedFeedback = false;
-                    this.requestUpdate();
-                }, 1000);
-                })
-                .catch(err => {
-                console.error('Failed to copy text: ', err);
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = textToCopy;
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
+                    // Visual feedback - temporarily change button appearance
                     this.copiedFeedback = true;
                     this.requestUpdate();
                     setTimeout(() => {
                         this.copiedFeedback = false;
                         this.requestUpdate();
                     }, 1000);
-                } catch (err) {
-                    console.error('Fallback: Unable to copy', err);
-                }
-                document.body.removeChild(textArea);
-            });
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        this.copiedFeedback = true;
+                        this.requestUpdate();
+                        setTimeout(() => {
+                            this.copiedFeedback = false;
+                            this.requestUpdate();
+                        }, 1000);
+                    } catch (err) {
+                        console.error('Fallback: Unable to copy', err);
+                    }
+                    document.body.removeChild(textArea);
+                });
         }
     }
 
@@ -1097,11 +1111,15 @@ export class AssistantView extends LitElement {
             <div class="response-container" id="responseContainer"></div>
 
             <div class="analyze-screen-container">
-                <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen} title="Capture and analyze current screen">
-                    📸 Analyze Screen & Answer
-                </button>
+                ${this.showAnalyzeButton
+                ? html`
+                          <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen} title="Capture and analyze current screen">
+                              📸 Analyze Screen & Answer
+                          </button>
+                      `
+                : ''}
                 ${this.selectedProfile === 'product'
-                    ? html`
+                ? html`
                           <button
                               class="go-deeper-btn"
                               @click=${this.onGoDeeper}
@@ -1111,7 +1129,7 @@ export class AssistantView extends LitElement {
                               🔍 Break Down Further
                           </button>
                       `
-                    : ''}
+                : ''}
             </div>
 
             <div class="text-input-container">
@@ -1131,34 +1149,11 @@ export class AssistantView extends LitElement {
 
                 ${this.responses.length > 0 ? html` <span class="response-counter">${responseCounter}</span> ` : ''}
 
-                <button
-                    class="save-button ${this.copiedFeedback ? 'copied' : ''}"
-                    @click=${this.copyCurrentResponse}
-                    title="${this.copiedFeedback ? 'Response copied!' : 'Copy this response'}"
-                >
-                    <?xml version="1.0" encoding="UTF-8"?><svg
-                        width="24px"
-                        height="24px"
-                        stroke-width="1.7"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            d="M8 4V2C8 1.44772 8.44772 1 9 1H19C19.5523 1 20 1.44772 20 2V12C20 12.5523 19.5523 13 19 13H17V20C17 21.1046 16.1046 22 15 22H5C3.89543 22 3 21.1046 3 20V10C3 8.89543 3.89543 8 5 8H8Z"
-                            stroke="currentColor"
-                            stroke-width="1.7"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        ></path>
-                    </svg>
-                </button>
-
                 ${this.selectedProfile !== 'exam' && this.vadMode === 'manual'
-                    ? html`
+                ? html`
                           <button class="mic-toggle-button ${this.micEnabled ? 'active' : 'inactive'}" @click=${this.handleMicToggle}>
                               ${this.micEnabled
-                                  ? html`
+                        ? html`
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z"
@@ -1190,7 +1185,7 @@ export class AssistantView extends LitElement {
                                             />
                             </svg>
                                     `
-                                  : html`
+                        : html`
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M1 1L23 23"
@@ -1238,7 +1233,7 @@ export class AssistantView extends LitElement {
                         `}
                     </button>
                       `
-                    : ''}
+                : ''}
 
                 <input type="text" id="textInput" placeholder="Type a message to the AI..." @keydown=${this.handleTextKeydown} />
 
