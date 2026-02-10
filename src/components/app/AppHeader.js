@@ -72,6 +72,27 @@ export class AppHeader extends LitElement {
             height: 14px;
         }
 
+        .rate-limit-link {
+            font-size: 10px;
+            color: #ef4444;
+            text-decoration: underline;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .rate-limit-link:hover {
+            opacity: 1;
+        }
+
+        .rate-limit-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
         @keyframes pulse-warning {
             0%,
             100% {
@@ -174,21 +195,21 @@ export class AppHeader extends LitElement {
         this.startTime = null;
         this.currentMode = 'interview';
         this.currentModel = '';
-        this.onCustomizeClick = () => { };
-        this.onHelpClick = () => { };
-        this.onHistoryClick = () => { };
-        this.onCloseClick = () => { };
-        this.onBackClick = () => { };
-        this.onHideToggleClick = () => { };
-        this.onRestartClick = () => { };
+        this.onCustomizeClick = () => {};
+        this.onHelpClick = () => {};
+        this.onHistoryClick = () => {};
+        this.onCloseClick = () => {};
+        this.onBackClick = () => {};
+        this.onHideToggleClick = () => {};
+        this.onRestartClick = () => {};
         this.isClickThrough = false;
         this.advancedMode = false;
-        this.onAdvancedClick = () => { };
+        this.onAdvancedClick = () => {};
         this._timerInterval = null;
         // Rate limiting
         this.rateLimitEndTime = null;
         this.rateLimitSource = null;
-        this.onRateLimitExpired = () => { };
+        this.onRateLimitExpired = () => {};
         this._rateLimitInterval = null;
     }
 
@@ -362,6 +383,16 @@ export class AppHeader extends LitElement {
         return navigationViews.includes(this.currentView);
     }
 
+    async handleRateLimitLinkClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const url = 'https://www.cheatingdev.in/groq-api-key';
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('open-external', url);
+        }
+    }
+
     render() {
         const elapsedTime = this.getElapsedTime();
         const modelName = this.getModelDisplayName();
@@ -372,20 +403,40 @@ export class AppHeader extends LitElement {
                 <div class="header-title">
                     ${this.getViewTitle()}
                     ${modelName && this.currentView === 'assistant'
-                ? '' // Model badge removed in assistant view
-                : ''}
+                        ? html`<span class="model-badge ${this.getModelBadgeClass()}">${modelName}</span>`
+                        : ''}
                 </div>
                 <div class="header-actions">
                     ${rateLimitCountdown && this.currentView === 'assistant'
-                ? '' // Rate limit badge removed in assistant view
-                : ''}
-                    ${this.currentView === 'assistant'
-                ? '' // Timer and status removed in assistant view
-                : ''}
-                    ${this.currentView === 'main'
-                ? html`
-                              ${this.advancedMode
                         ? html`
+                              <div class="rate-limit-container">
+                                  <div class="rate-limit-badge">
+                                      <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                                          <circle cx="12" cy="12" r="9"></circle>
+                                          <path d="M12 7v5l3 3"></path>
+                                      </svg>
+                                      <span>
+                                          ${this.rateLimitSource ? `${this.rateLimitSource} limit` : 'API limit'} · rate limited
+                                          (${rateLimitCountdown})
+                                      </span>
+                                  </div>
+                                  <span class="rate-limit-link" @click=${this.handleRateLimitLinkClick}> See point 4 to remove rate limits → </span>
+                              </div>
+                          `
+                        : ''}
+                    ${this.currentView === 'assistant'
+                        ? html`
+                              <span>
+                                  ${elapsedTime ? `Session: ${elapsedTime}` : ''}
+                                  ${elapsedTime && this.statusText && !this.statusText.includes('Rate limited') ? ' · ' : ''}
+                                  ${this.statusText && !this.statusText.includes('Rate limited') ? this.statusText : ''}
+                              </span>
+                          `
+                        : ''}
+                    ${this.currentView === 'main'
+                        ? html`
+                              ${this.advancedMode
+                                  ? html`
                                         <button class="icon-button" @click=${this.onAdvancedClick}>
                                             <?xml version="1.0" encoding="UTF-8"?><svg
                                                 width="24px"
@@ -428,7 +479,7 @@ export class AppHeader extends LitElement {
                                             </svg>
                                         </button>
                                     `
-                        : ''}
+                                  : ''}
                               <button class="icon-button" @click=${this.onCustomizeClick}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -522,9 +573,9 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                : ''}
+                        : ''}
                     ${this.currentView === 'assistant'
-                ? html`
+                        ? html`
                               <button @click=${this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -545,7 +596,7 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                : html`
+                        : html`
                               <button @click=${this.isNavigationView() ? this.onBackClick : this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"

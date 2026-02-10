@@ -223,6 +223,7 @@ function getDefaultKeybinds() {
         nextStep: isMac ? 'Cmd+Enter' : 'Ctrl+Enter',
         previousResponse: isMac ? 'Cmd+[' : 'Ctrl+[',
         nextResponse: isMac ? 'Cmd+]' : 'Ctrl+]',
+        latestResponse: isMac ? 'Cmd+Shift+]' : 'Ctrl+Shift+]',
         scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
         scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
         copyCodeBlocks: isMac ? 'Cmd+Shift+C' : 'Ctrl+Shift+C',
@@ -417,6 +418,19 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, geminiSessi
             console.log(`Registered nextResponse: ${keybinds.nextResponse}`);
         } catch (error) {
             console.error(`Failed to register nextResponse (${keybinds.nextResponse}):`, error);
+        }
+    }
+
+    // Register latest response shortcut
+    if (keybinds.latestResponse) {
+        try {
+            globalShortcut.register(keybinds.latestResponse, () => {
+                console.log('Latest response shortcut triggered');
+                sendToRenderer('navigate-latest-response');
+            });
+            console.log(`Registered latestResponse: ${keybinds.latestResponse}`);
+        } catch (error) {
+            console.error(`Failed to register latestResponse (${keybinds.latestResponse}):`, error);
         }
     }
 

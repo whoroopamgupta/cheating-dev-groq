@@ -148,7 +148,7 @@ export class AssistantView extends LitElement {
         }
 
         /* VS Code Syntax Highlighting Colors */
-        
+
         /* Keywords (blue) */
         .response-container .hljs-keyword,
         .response-container .hljs-selector-tag,
@@ -257,7 +257,7 @@ export class AssistantView extends LitElement {
         }
 
         /* Language-specific enhancements */
-        
+
         /* JavaScript/TypeScript */
         .response-container .hljs-keyword.hljs-return,
         .response-container .hljs-keyword.hljs-function,
@@ -621,15 +621,15 @@ export class AssistantView extends LitElement {
         this.currentResponseIndex = -1;
         this.selectedProfile = 'interview';
         this.selectedLanguage = 'en-US';
-        this.onSendText = () => { };
+        this.onSendText = () => {};
         this._lastAnimatedWordCount = 0;
         this.copiedFeedback = false;
         // Microphone starts as OFF by default (for manual mode)
         this.micEnabled = false;
         // Load VAD mode from localStorage
         this.vadMode = localStorage.getItem('vadMode') || 'automatic';
-        this.onAnalyzeScreen = () => { };
-        this.onGoDeeper = () => { };
+        this.onAnalyzeScreen = () => {};
+        this.onGoDeeper = () => {};
         // Load saved responses from localStorage
         try {
             this.savedResponses = JSON.parse(localStorage.getItem('savedResponses') || '[]');
@@ -841,6 +841,21 @@ export class AssistantView extends LitElement {
         }
     }
 
+    navigateToLatestResponse() {
+        if (this.responses.length === 0) return;
+
+        const latestIndex = this.responses.length - 1;
+        if (this.currentResponseIndex !== latestIndex) {
+            this.currentResponseIndex = latestIndex;
+            this.dispatchEvent(
+                new CustomEvent('response-index-changed', {
+                    detail: { index: this.currentResponseIndex },
+                })
+            );
+            this.requestUpdate();
+        }
+    }
+
     navigateToNextResponse() {
         if (this.currentResponseIndex < this.responses.length - 1) {
             this.currentResponseIndex++;
@@ -898,6 +913,11 @@ export class AssistantView extends LitElement {
                 this.navigateToNextResponse();
             };
 
+            this.handleLatestResponse = () => {
+                console.log('Received navigate-latest-response message');
+                this.navigateToLatestResponse();
+            };
+
             this.handleScrollUp = () => {
                 console.log('Received scroll-response-up message');
                 this.scrollResponseUp();
@@ -915,6 +935,7 @@ export class AssistantView extends LitElement {
 
             ipcRenderer.on('navigate-previous-response', this.handlePreviousResponse);
             ipcRenderer.on('navigate-next-response', this.handleNextResponse);
+            ipcRenderer.on('navigate-latest-response', this.handleLatestResponse);
             ipcRenderer.on('scroll-response-up', this.handleScrollUp);
             ipcRenderer.on('scroll-response-down', this.handleScrollDown);
             ipcRenderer.on('copy-code-blocks', this.handleCopyCodeBlocks);
@@ -932,6 +953,9 @@ export class AssistantView extends LitElement {
             }
             if (this.handleNextResponse) {
                 ipcRenderer.removeListener('navigate-next-response', this.handleNextResponse);
+            }
+            if (this.handleLatestResponse) {
+                ipcRenderer.removeListener('navigate-latest-response', this.handleLatestResponse);
             }
             if (this.handleScrollUp) {
                 ipcRenderer.removeListener('scroll-response-up', this.handleScrollUp);
@@ -1112,14 +1136,14 @@ export class AssistantView extends LitElement {
 
             <div class="analyze-screen-container">
                 ${this.showAnalyzeButton
-                ? html`
+                    ? html`
                           <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen} title="Capture and analyze current screen">
                               📸 Analyze Screen & Answer
                           </button>
                       `
-                : ''}
+                    : ''}
                 ${this.selectedProfile === 'product'
-                ? html`
+                    ? html`
                           <button
                               class="go-deeper-btn"
                               @click=${this.onGoDeeper}
@@ -1129,7 +1153,7 @@ export class AssistantView extends LitElement {
                               🔍 Break Down Further
                           </button>
                       `
-                : ''}
+                    : ''}
             </div>
 
             <div class="text-input-container">
@@ -1148,13 +1172,12 @@ export class AssistantView extends LitElement {
                 </button>
 
                 ${this.responses.length > 0 ? html` <span class="response-counter">${responseCounter}</span> ` : ''}
-
                 ${this.selectedProfile !== 'exam' && this.vadMode === 'manual'
-                ? html`
+                    ? html`
                           <button class="mic-toggle-button ${this.micEnabled ? 'active' : 'inactive'}" @click=${this.handleMicToggle}>
                               ${this.micEnabled
-                        ? html`
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  ? html`
+                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z"
                                                 stroke="currentColor"
@@ -1183,10 +1206,10 @@ export class AssistantView extends LitElement {
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                             />
-                            </svg>
+                                        </svg>
                                     `
-                        : html`
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  : html`
+                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M1 1L23 23"
                                                 stroke="currentColor"
@@ -1229,11 +1252,11 @@ export class AssistantView extends LitElement {
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                             />
-                            </svg>
-                        `}
-                    </button>
+                                        </svg>
+                                    `}
+                          </button>
                       `
-                : ''}
+                    : ''}
 
                 <input type="text" id="textInput" placeholder="Type a message to the AI..." @keydown=${this.handleTextKeydown} />
 
