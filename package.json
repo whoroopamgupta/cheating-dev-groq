@@ -43,6 +43,7 @@
         "electron": "^30.0.5",
         "jsdom": "^23.2.0",
         "pkg-types": "^2.2.0",
+        "png2icons": "^2.0.1",
         "vitest": "^1.6.1"
     }
 }
