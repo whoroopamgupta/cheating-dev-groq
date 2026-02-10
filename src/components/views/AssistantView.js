@@ -550,7 +550,6 @@ export class AssistantView extends LitElement {
             border-radius: 8px;
             font-size: 13px;
             font-weight: 500;
-            cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
@@ -1136,11 +1135,7 @@ export class AssistantView extends LitElement {
 
             <div class="analyze-screen-container">
                 ${this.showAnalyzeButton
-                    ? html`
-                          <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen} title="Capture and analyze current screen">
-                              📸 Analyze Screen & Answer
-                          </button>
-                      `
+                    ? html` <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen}>📸 Analyze Screen & Answer</button> `
                     : ''}
                 ${this.selectedProfile === 'product'
                     ? html`

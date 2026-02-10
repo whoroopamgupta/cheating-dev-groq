@@ -149,7 +149,6 @@ export class MainView extends LitElement {
             padding: 6px 12px;
             border-radius: 6px;
             font-size: 12px;
-            cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
@@ -195,13 +194,13 @@ export class MainView extends LitElement {
 
     constructor() {
         super();
-        this.onStart = () => { };
-        this.onAPIKeyHelp = () => { };
+        this.onStart = () => {};
+        this.onAPIKeyHelp = () => {};
         this.isInitializing = false;
-        this.onLayoutModeChange = () => { };
-        this.onLogout = () => { };
+        this.onLayoutModeChange = () => {};
+        this.onLogout = () => {};
         this.showApiKeyError = false;
-        this.onClearAndRestart = () => { };
+        this.onClearAndRestart = () => {};
         this.boundKeydownHandler = this.handleKeydown.bind(this);
         // Load selected profile from localStorage (default to interview on first run)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
@@ -450,7 +449,7 @@ export class MainView extends LitElement {
 
             <div class="footer-actions">
                 <span class="user-email">Signed in as <strong>${this.getLoggedInEmail()}</strong></span>
-                <button class="logout-button" @click=${this.handleLogout} title="Sign out">
+                <button class="logout-button" @click=${this.handleLogout}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                         <polyline points="16 17 21 12 16 7"></polyline>

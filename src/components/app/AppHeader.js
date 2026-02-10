@@ -284,7 +284,7 @@ export class AppHeader extends LitElement {
         if (this.rateLimitEndTime && this.rateLimitEndTime > Date.now()) {
             const remaining = Math.ceil((this.rateLimitEndTime - Date.now()) / 1000);
             console.log(`[AppHeader] Starting rate limit timer for ${remaining}s`);
-
+            
             this._rateLimitInterval = setInterval(() => {
                 const now = Date.now();
                 if (!this.rateLimitEndTime || this.rateLimitEndTime <= now) {
@@ -410,11 +410,11 @@ export class AppHeader extends LitElement {
                     ${rateLimitCountdown && this.currentView === 'assistant'
                         ? html`
                               <div class="rate-limit-container">
-                                  <div class="rate-limit-badge">
+                              <div class="rate-limit-badge">
                                       <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                                           <circle cx="12" cy="12" r="9"></circle>
                                           <path d="M12 7v5l3 3"></path>
-                                      </svg>
+                                  </svg>
                                       <span>
                                           ${this.rateLimitSource ? `${this.rateLimitSource} limit` : 'API limit'} · rate limited
                                           (${rateLimitCountdown})
