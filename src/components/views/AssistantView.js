@@ -538,8 +538,67 @@ export class AssistantView extends LitElement {
 
         .analyze-screen-container {
             display: flex;
-            justify-content: flex-end;
+            align-items: center;
             margin-bottom: 8px;
+            gap: 6px;
+        }
+
+        .follow-up-bubbles {
+            display: flex;
+            flex: 1;
+            gap: 5px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding: 2px 0;
+            mask-image: linear-gradient(to right, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+        }
+
+        .follow-up-bubbles::-webkit-scrollbar {
+            display: none;
+        }
+
+        .follow-up-chip {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--description-color, rgba(255, 255, 255, 0.65));
+            padding: 5px 10px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            animation: chipAppear 0.3s ease-out backwards;
+            flex-shrink: 0;
+        }
+
+        .follow-up-chip:nth-child(1) { animation-delay: 0s; }
+        .follow-up-chip:nth-child(2) { animation-delay: 0.05s; }
+        .follow-up-chip:nth-child(3) { animation-delay: 0.1s; }
+        .follow-up-chip:nth-child(4) { animation-delay: 0.15s; }
+        .follow-up-chip:nth-child(5) { animation-delay: 0.2s; }
+
+        @keyframes chipAppear {
+            from {
+                opacity: 0;
+                transform: translateY(4px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .follow-up-chip:hover {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: #c4b5fd;
+            box-shadow: 0 0 8px rgba(139, 92, 246, 0.15);
+        }
+
+        .follow-up-chip:active {
+            transform: scale(0.96);
         }
 
         .analyze-screen-btn {
@@ -554,6 +613,7 @@ export class AssistantView extends LitElement {
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-shrink: 0;
         }
 
         .analyze-screen-btn:hover {
@@ -579,7 +639,7 @@ export class AssistantView extends LitElement {
             display: flex;
             align-items: center;
             gap: 6px;
-            margin-left: 8px;
+            flex-shrink: 0;
         }
 
         .go-deeper-btn:hover {
@@ -611,6 +671,7 @@ export class AssistantView extends LitElement {
         vadMode: { type: String },
         onAnalyzeScreen: { type: Function },
         onGoDeeper: { type: Function },
+        onFollowUpPrompt: { type: Function },
         showAnalyzeButton: { type: Boolean },
     };
 
@@ -620,15 +681,16 @@ export class AssistantView extends LitElement {
         this.currentResponseIndex = -1;
         this.selectedProfile = 'interview';
         this.selectedLanguage = 'en-US';
-        this.onSendText = () => {};
+        this.onSendText = () => { };
         this._lastAnimatedWordCount = 0;
         this.copiedFeedback = false;
         // Microphone starts as OFF by default (for manual mode)
         this.micEnabled = false;
         // Load VAD mode from localStorage
         this.vadMode = localStorage.getItem('vadMode') || 'automatic';
-        this.onAnalyzeScreen = () => {};
-        this.onGoDeeper = () => {};
+        this.onAnalyzeScreen = () => { };
+        this.onGoDeeper = () => { };
+        this.onFollowUpPrompt = () => { };
         // Load saved responses from localStorage
         try {
             this.savedResponses = JSON.parse(localStorage.getItem('savedResponses') || '[]');
@@ -1134,11 +1196,22 @@ export class AssistantView extends LitElement {
             <div class="response-container" id="responseContainer"></div>
 
             <div class="analyze-screen-container">
+                ${this.responses.length > 0
+                ? html`
+                          <div class="follow-up-bubbles">
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Explain the previous answer in more depth with detailed reasoning and examples')}>💡 Explain Deeper</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a more optimized or efficient approach to the previous answer')}>⚡ Optimized Approach</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a practical code example or real-world example for the previous answer')}>🧪 With Example</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Summarize the key takeaways from the previous answer as short bullet points')}>🔑 Key Takeaways</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Compare alternative approaches or solutions and their trade-offs for the previous answer')}>🆚 Alternatives</button>
+                          </div>
+                      `
+                : ''}
                 ${this.showAnalyzeButton
-                    ? html` <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen}>📸 Analyze Screen & Answer</button> `
-                    : ''}
+                ? html` <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen}>📸 Analyze Screen & Answer</button> `
+                : ''}
                 ${this.selectedProfile === 'product'
-                    ? html`
+                ? html`
                           <button
                               class="go-deeper-btn"
                               @click=${this.onGoDeeper}
@@ -1148,7 +1221,7 @@ export class AssistantView extends LitElement {
                               🔍 Break Down Further
                           </button>
                       `
-                    : ''}
+                : ''}
             </div>
 
             <div class="text-input-container">
@@ -1168,10 +1241,10 @@ export class AssistantView extends LitElement {
 
                 ${this.responses.length > 0 ? html` <span class="response-counter">${responseCounter}</span> ` : ''}
                 ${this.selectedProfile !== 'exam' && this.vadMode === 'manual'
-                    ? html`
+                ? html`
                           <button class="mic-toggle-button ${this.micEnabled ? 'active' : 'inactive'}" @click=${this.handleMicToggle}>
                               ${this.micEnabled
-                                  ? html`
+                        ? html`
                                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M12 1C10.3431 1 9 2.34315 9 4V12C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12V4C15 2.34315 13.6569 1 12 1Z"
@@ -1203,7 +1276,7 @@ export class AssistantView extends LitElement {
                                             />
                                         </svg>
                                     `
-                                  : html`
+                        : html`
                                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path
                                                 d="M1 1L23 23"
@@ -1251,7 +1324,7 @@ export class AssistantView extends LitElement {
                                     `}
                           </button>
                       `
-                    : ''}
+                : ''}
 
                 <input type="text" id="textInput" placeholder="Type a message to the AI..." @keydown=${this.handleTextKeydown} />
 

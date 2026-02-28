@@ -1281,6 +1281,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         .onSendText=${message => this.handleSendText(message)}
                         .onAnalyzeScreen=${() => this.handleAnalyzeScreen()}
                         .onGoDeeper=${() => this.handleGoDeeper()}
+                        .onFollowUpPrompt=${message => this.handleSendText(message)}
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
                         @response-animation-complete=${() => {
