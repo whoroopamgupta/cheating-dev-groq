@@ -139,10 +139,10 @@ describe('gemini conversation helpers', () => {
         });
 
         it('should support Llama model selection for interview mode', () => {
-            const llamaModels = ['llama-4-maverick', 'llama-4-scout'];
+            const llamaModels = ['gpt-oss-120b', 'gpt-oss-20b'];
 
-            expect(llamaModels).toContain('llama-4-maverick');
-            expect(llamaModels).toContain('llama-4-scout');
+            expect(llamaModels).toContain('gpt-oss-120b');
+            expect(llamaModels).toContain('gpt-oss-20b');
             expect(llamaModels.length).toBe(2);
         });
 
@@ -152,8 +152,8 @@ describe('gemini conversation helpers', () => {
             expect(['gemini-2.5-flash', 'gemini-2.5-pro']).toContain(defaultGeminiModel);
 
             // Default Llama model for interview
-            const defaultLlamaModel = 'llama-4-maverick';
-            expect(['llama-4-maverick', 'llama-4-scout']).toContain(defaultLlamaModel);
+            const defaultLlamaModel = 'gpt-oss-120b';
+            expect(['gpt-oss-120b', 'gpt-oss-20b']).toContain(defaultLlamaModel);
         });
     });
 

@@ -80,6 +80,10 @@ jobs:
 
     build-linux:
         runs-on: ubuntu-latest
+        env:
+            # Workaround for onnxruntime-node GPU NuGet bug on Linux:
+            # skip optional GPU provider download during install
+            ONNXRUNTIME_NODE_INSTALL: skip
         steps:
             - name: Checkout repo
               uses: actions/checkout@v4

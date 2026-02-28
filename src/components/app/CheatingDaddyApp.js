@@ -858,13 +858,19 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             // Exam mode (Gemini): Use Gemini API
             await cheddar.initializeGemini(this.selectedProfile, this.selectedLanguage, selectedMode, selectedModel);
         } else {
-            // Interview mode (including exam-groq): Use Groq API for STT + Llama for response generation
+            // Interview mode (including exam-groq): Use Groq API for STT + GPT OSS for response generation
             await cheddar.initializeGroq(apiKey);
 
-            // Get the selected Groq model (default to maverick)
-            const selectedGroqModel = localStorage.getItem('selectedGroqModel') || 'llama-4-maverick';
+            // Migrate deprecated model keys from localStorage
+            const DEPRECATED_MODEL_MAP = { 'llama-4-maverick': 'gpt-oss-120b', 'llama-4-scout': 'gpt-oss-20b' };
+            let selectedGroqModel = localStorage.getItem('selectedGroqModel') || 'gpt-oss-120b';
+            if (DEPRECATED_MODEL_MAP[selectedGroqModel]) {
+                selectedGroqModel = DEPRECATED_MODEL_MAP[selectedGroqModel];
+                localStorage.setItem('selectedGroqModel', selectedGroqModel);
+                console.log(`[GROQ] Migrated deprecated model to: ${selectedGroqModel}`);
+            }
 
-            // Set up Llama config with system prompt from prompts.js
+            // Set up Groq config with system prompt from prompts.js
             const { ipcRenderer } = window.require('electron');
             const customPrompt = localStorage.getItem(`customPrompt_${this.selectedProfile}`) || '';
 
@@ -878,14 +884,14 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                 systemPrompt: systemPrompt,
                 model: selectedGroqModel,
             });
-            console.log(`[GROQ] Llama config set - Profile: ${this.selectedProfile}, Model: ${selectedGroqModel}`);
+            console.log(`[GROQ] Config set - Profile: ${this.selectedProfile}, Model: ${selectedGroqModel}`);
         }
 
         // Set current mode and model for header display
         this.currentMode = selectedMode;
         if (selectedMode === 'interview') {
-            const selectedGroqModel = localStorage.getItem('selectedGroqModel') || 'llama-4-maverick';
-            this.currentModel = selectedGroqModel;
+            // Read the (now migrated) model from localStorage
+            this.currentModel = localStorage.getItem('selectedGroqModel') || 'gpt-oss-120b';
         } else {
             this.currentModel = selectedModel;
         }
@@ -1293,12 +1299,12 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
     render() {
         const mainContentClass = `main-content ${this.currentView === 'assistant'
-                ? 'assistant-view'
-                : this.currentView === 'onboarding'
-                    ? 'onboarding-view'
-                    : this.currentView === 'login'
-                        ? 'login-view'
-                        : 'with-border'
+            ? 'assistant-view'
+            : this.currentView === 'onboarding'
+                ? 'onboarding-view'
+                : this.currentView === 'login'
+                    ? 'login-view'
+                    : 'with-border'
             }`;
 
         // Hide header on login view

@@ -49,21 +49,21 @@ describe('CustomDropdown Component', () => {
             expect(geminiOptions[1].icon).toContain('Gemini');
         });
 
-        it('should have correct Llama model options with icons', () => {
-            const llamaOptions = [
-                { value: 'llama-4-maverick', label: 'Llama 4 Maverick (Fast, More Accurate)', icon: './assets/models/metalogo.dcf881ba.svg' },
-                { value: 'llama-4-scout', label: 'Llama 4 Scout (Faster, Balanced)', icon: './assets/models/metalogo.dcf881ba.svg' }
+        it('should have correct GPT OSS model options with icons', () => {
+            const groqOptions = [
+                { value: 'gpt-oss-120b', label: 'GPT OSS 120B (Accurate, Powerful)', icon: './assets/models/openai_logo.png' },
+                { value: 'gpt-oss-20b', label: 'GPT OSS 20B (Faster, Lightweight)', icon: './assets/models/openai_logo.png' }
             ];
 
-            expect(llamaOptions.length).toBe(2);
-            expect(llamaOptions[0].icon).toContain('metalogo');
-            expect(llamaOptions[1].icon).toContain('metalogo');
+            expect(groqOptions.length).toBe(2);
+            expect(groqOptions[0].icon).toContain('openai');
+            expect(groqOptions[1].icon).toContain('openai');
         });
 
-        it('should use Meta logo for Llama models', () => {
-            const llamaIcon = './assets/models/metalogo.dcf881ba.svg';
-            expect(llamaIcon).toContain('metalogo');
-            expect(llamaIcon).toContain('.svg');
+        it('should use OpenAI logo for GPT OSS models', () => {
+            const openaiIcon = './assets/models/openai_logo.png';
+            expect(openaiIcon).toContain('openai');
+            expect(openaiIcon).toContain('.png');
         });
 
         it('should use Gemini logo for Gemini models', () => {
@@ -116,23 +116,23 @@ describe('CustomDropdown Component', () => {
             }
         });
 
-        it('should map interview profiles to Llama options', () => {
+        it('should map interview profiles to GPT OSS options', () => {
             const interviewProfiles = ['interview', 'sales', 'meeting', 'presentation', 'negotiation'];
-            const llamaModels = ['llama-4-maverick', 'llama-4-scout'];
+            const groqModels = ['gpt-oss-120b', 'gpt-oss-20b'];
 
             interviewProfiles.forEach(profile => {
                 if (profile !== 'exam') {
-                    expect(llamaModels).toContain('llama-4-maverick');
-                    expect(llamaModels).toContain('llama-4-scout');
+                    expect(groqModels).toContain('gpt-oss-120b');
+                    expect(groqModels).toContain('gpt-oss-20b');
                 }
             });
         });
     });
 
     describe('Default Values', () => {
-        it('should have llama-4-maverick as default for interview mode', () => {
-            const defaultGroqModel = 'llama-4-maverick';
-            expect(defaultGroqModel).toBe('llama-4-maverick');
+        it('should have gpt-oss-120b as default for interview mode', () => {
+            const defaultGroqModel = 'gpt-oss-120b';
+            expect(defaultGroqModel).toBe('gpt-oss-120b');
         });
 
         it('should have gemini-2.5-pro as default for exam mode', () => {

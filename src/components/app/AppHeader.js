@@ -195,21 +195,21 @@ export class AppHeader extends LitElement {
         this.startTime = null;
         this.currentMode = 'interview';
         this.currentModel = '';
-        this.onCustomizeClick = () => {};
-        this.onHelpClick = () => {};
-        this.onHistoryClick = () => {};
-        this.onCloseClick = () => {};
-        this.onBackClick = () => {};
-        this.onHideToggleClick = () => {};
-        this.onRestartClick = () => {};
+        this.onCustomizeClick = () => { };
+        this.onHelpClick = () => { };
+        this.onHistoryClick = () => { };
+        this.onCloseClick = () => { };
+        this.onBackClick = () => { };
+        this.onHideToggleClick = () => { };
+        this.onRestartClick = () => { };
         this.isClickThrough = false;
         this.advancedMode = false;
-        this.onAdvancedClick = () => {};
+        this.onAdvancedClick = () => { };
         this._timerInterval = null;
         // Rate limiting
         this.rateLimitEndTime = null;
         this.rateLimitSource = null;
-        this.onRateLimitExpired = () => {};
+        this.onRateLimitExpired = () => { };
         this._rateLimitInterval = null;
     }
 
@@ -284,7 +284,7 @@ export class AppHeader extends LitElement {
         if (this.rateLimitEndTime && this.rateLimitEndTime > Date.now()) {
             const remaining = Math.ceil((this.rateLimitEndTime - Date.now()) / 1000);
             console.log(`[AppHeader] Starting rate limit timer for ${remaining}s`);
-            
+
             this._rateLimitInterval = setInterval(() => {
                 const now = Date.now();
                 if (!this.rateLimitEndTime || this.rateLimitEndTime <= now) {
@@ -364,6 +364,8 @@ export class AppHeader extends LitElement {
 
         // Format model names for display
         const modelMap = {
+            'gpt-oss-120b': 'GPT OSS 120B',
+            'gpt-oss-20b': 'GPT OSS 20B',
             'gemini-live-2.5-flash-preview': '2.5 Flash Live',
             'gemini-2.5-flash-native-audio-preview-09-2025': '2.5 Flash Live',
             'gemini-2.5-flash': '2.5 Flash',
@@ -403,12 +405,12 @@ export class AppHeader extends LitElement {
                 <div class="header-title">
                     ${this.getViewTitle()}
                     ${modelName && this.currentView === 'assistant'
-                        ? html`<span class="model-badge ${this.getModelBadgeClass()}">${modelName}</span>`
-                        : ''}
+                ? html`<span class="model-badge ${this.getModelBadgeClass()}">${modelName}</span>`
+                : ''}
                 </div>
                 <div class="header-actions">
                     ${rateLimitCountdown && this.currentView === 'assistant'
-                        ? html`
+                ? html`
                               <div class="rate-limit-container">
                               <div class="rate-limit-badge">
                                       <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
@@ -423,20 +425,20 @@ export class AppHeader extends LitElement {
                                   <span class="rate-limit-link" @click=${this.handleRateLimitLinkClick}> See point 4 to remove rate limits → </span>
                               </div>
                           `
-                        : ''}
+                : ''}
                     ${this.currentView === 'assistant'
-                        ? html`
+                ? html`
                               <span>
                                   ${elapsedTime ? `Session: ${elapsedTime}` : ''}
                                   ${elapsedTime && this.statusText && !this.statusText.includes('Rate limited') ? ' · ' : ''}
                                   ${this.statusText && !this.statusText.includes('Rate limited') ? this.statusText : ''}
                               </span>
                           `
-                        : ''}
+                : ''}
                     ${this.currentView === 'main'
-                        ? html`
+                ? html`
                               ${this.advancedMode
-                                  ? html`
+                        ? html`
                                         <button class="icon-button" @click=${this.onAdvancedClick}>
                                             <?xml version="1.0" encoding="UTF-8"?><svg
                                                 width="24px"
@@ -479,7 +481,7 @@ export class AppHeader extends LitElement {
                                             </svg>
                                         </button>
                                     `
-                                  : ''}
+                        : ''}
                               <button class="icon-button" @click=${this.onCustomizeClick}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -573,9 +575,9 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                        : ''}
+                : ''}
                     ${this.currentView === 'assistant'
-                        ? html`
+                ? html`
                               <button @click=${this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -596,7 +598,7 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                        : html`
+                : html`
                               <button @click=${this.isNavigationView() ? this.onBackClick : this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"

@@ -197,9 +197,9 @@ async function transcribeWithGroq(wavBuffer) {
                 } else if (res.statusCode === 429) {
                     // Rate limit hit for Whisper
                     console.error('[GROQ WHISPER] Rate limit exceeded (429)');
-                    
+
                     let retryAfterSeconds = 60; // Default
-                    
+
                     // Check Retry-After header
                     if (res.headers['retry-after']) {
                         const parsed = parseInt(res.headers['retry-after'], 10);
@@ -207,7 +207,7 @@ async function transcribeWithGroq(wavBuffer) {
                             retryAfterSeconds = parsed;
                         }
                     }
-                    
+
                     // Try to parse from response body
                     try {
                         const errorBody = JSON.parse(data);
@@ -217,16 +217,16 @@ async function transcribeWithGroq(wavBuffer) {
                                 retryAfterSeconds = Math.ceil(parseFloat(retryMatch[1]));
                             }
                         }
-                    } catch (e) {}
-                    
+                    } catch (e) { }
+
                     console.log(`[GROQ WHISPER] Rate limited for ${retryAfterSeconds} seconds`);
-                    
+
                     sendToRenderer('rate-limit-hit', {
                         retryAfterSeconds: retryAfterSeconds,
                         source: 'Groq',
                     });
                     sendToRenderer('update-status', `Rate limited (${retryAfterSeconds}s)`);
-                    
+
                     reject(new Error(`Groq Whisper rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
                     console.error('[GROQ] API Error:', res.statusCode, data);
@@ -501,14 +501,17 @@ function isGroqInitialized() {
     return groqApiKey !== null;
 }
 
-// Llama text generation configuration
-const LLAMA_MODELS = {
-    'llama-4-maverick': 'meta-llama/llama-4-maverick-17b-128e-instruct',
-    'llama-4-scout': 'meta-llama/llama-4-scout-17b-16e-instruct',
+// Groq text generation model configuration
+const GROQ_MODELS = {
+    'gpt-oss-120b': 'openai/gpt-oss-120b',
+    'gpt-oss-20b': 'openai/gpt-oss-20b',
 };
 
-// Default to Maverick
-let currentLlamaModel = LLAMA_MODELS['llama-4-maverick'];
+// Vision model for screenshot analysis (only vision-capable model on Groq)
+const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+
+// Default to GPT OSS 120B for text generation
+let currentLlamaModel = GROQ_MODELS['gpt-oss-120b'];
 
 // Conversation history for context
 let conversationHistory = [];
@@ -519,20 +522,22 @@ let currentSystemPrompt = '';
  * Set the current profile, system prompt, and model for Llama generation
  * @param {string} profile - The profile name (interview, sales, etc.)
  * @param {string} systemPrompt - The system prompt to use
- * @param {string} [model] - The model key ('llama-4-maverick' or 'llama-4-scout')
+ * @param {string} [model] - The model key ('gpt-oss-120b' or 'gpt-oss-20b')
  */
-function setLlamaConfig(profile, systemPrompt, model = 'llama-4-maverick') {
+function setLlamaConfig(profile, systemPrompt, model = 'gpt-oss-120b') {
     currentProfile = profile;
     currentSystemPrompt = systemPrompt;
-    currentLlamaModel = LLAMA_MODELS[model] || LLAMA_MODELS['llama-4-maverick'];
+    currentLlamaModel = GROQ_MODELS[model] || GROQ_MODELS['gpt-oss-120b'];
     conversationHistory = []; // Reset conversation on config change
-    console.log(`[GROQ LLAMA] Config set - Profile: ${profile}, Model: ${model} (${currentLlamaModel})`);
+    console.log(`[GROQ] Config set - Profile: ${profile}, Model: ${model} (${currentLlamaModel})`);
 }
 
 /**
- * Generate a response using Llama 4 Maverick via Groq API
+ * Generate a response using Groq API
+ * Routes to Llama 4 Scout for vision (screenshot) requests,
+ * GPT OSS for text-only requests.
  * @param {string} userMessage - The user's question/transcription
- * @param {string} [imageBase64] - Optional base64 encoded image
+ * @param {string} [imageBase64] - Optional base64 encoded image for screen analysis
  * @returns {Promise<string>} - The generated response
  */
 async function generateWithLlama(userMessage, imageBase64 = null) {
@@ -542,8 +547,13 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             return;
         }
 
-        console.log(`\n[GROQ LLAMA] Generating response for: "${userMessage.substring(0, 100)}..."`);
-        sendToRenderer('update-status', 'Thinking...');
+        // Hybrid routing: use Scout for vision, GPT OSS for text
+        const isVisionRequest = !!imageBase64;
+        const modelToUse = isVisionRequest ? VISION_MODEL : currentLlamaModel;
+
+        console.log(`\n[GROQ] Generating response for: "${userMessage.substring(0, 100)}..."`);
+        console.log(`[GROQ] Mode: ${isVisionRequest ? '🖼️ VISION (Scout)' : '💬 TEXT (GPT OSS)'}, Model: ${modelToUse}`);
+        sendToRenderer('update-status', isVisionRequest ? 'Analyzing screen...' : 'Thinking...');
 
         // Build messages array
         const messages = [];
@@ -559,32 +569,33 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         // Add conversation history for context
         messages.push(...conversationHistory);
 
-        // Add current user message
-        const userContent = [];
-
-        // Add text content
-        userContent.push({
-            type: 'text',
-            text: userMessage,
-        });
-
-        // Add image if provided (for vision-capable models)
-        if (imageBase64) {
-            userContent.push({
-                type: 'image_url',
-                image_url: {
-                    url: `data:image/jpeg;base64,${imageBase64}`,
+        // Build user message content based on whether this is a vision request
+        if (isVisionRequest) {
+            // Vision request: use multimodal array format for Scout
+            const userContent = [
+                { type: 'text', text: String(userMessage) },
+                {
+                    type: 'image_url',
+                    image_url: {
+                        url: `data:image/jpeg;base64,${imageBase64}`,
+                    },
                 },
+            ];
+            messages.push({
+                role: 'user',
+                content: userContent,
+            });
+            console.log(`[GROQ] Vision request: image size ~${Math.round(imageBase64.length * 0.75 / 1024)}KB`);
+        } else {
+            // Text-only request: use plain string for GPT OSS
+            messages.push({
+                role: 'user',
+                content: String(userMessage),
             });
         }
 
-        messages.push({
-            role: 'user',
-            content: userContent.length === 1 ? userMessage : userContent,
-        });
-
         const requestBody = JSON.stringify({
-            model: currentLlamaModel,
+            model: modelToUse,
             messages: messages,
             temperature: 0.7,
             max_tokens: 4096,
@@ -607,10 +618,19 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
 
         let fullResponse = '';
         let buffer = '';
+        let errorBody = ''; // Accumulate raw response for non-200 errors
 
         const req = https.request(options, res => {
             res.on('data', chunk => {
-                buffer += chunk.toString();
+                const chunkStr = chunk.toString();
+
+                // For non-200 responses, accumulate raw body for error logging
+                if (res.statusCode !== 200) {
+                    errorBody += chunkStr;
+                    return;
+                }
+
+                buffer += chunkStr;
 
                 // Process complete SSE messages
                 const lines = buffer.split('\n');
@@ -647,12 +667,12 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                             if (content) {
                                 fullResponse += content;
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
 
                     if (fullResponse) {
                         console.log('\n========================================');
-                        console.log('[GROQ LLAMA] RESPONSE:');
+                        console.log('[GROQ] RESPONSE:');
                         console.log('----------------------------------------');
                         console.log(fullResponse.substring(0, 500) + (fullResponse.length > 500 ? '...' : ''));
                         console.log('========================================\n');
@@ -675,11 +695,11 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                     }
                 } else if (res.statusCode === 429) {
                     // Rate limit hit - extract retry delay
-                    console.error('[GROQ LLAMA] API Error: 429 - Rate limit exceeded');
-                    
+                    console.error('[GROQ] API Error: 429 - Rate limit exceeded');
+
                     // Try to extract retry-after from headers or response body
                     let retryAfterSeconds = 60; // Default to 60 seconds
-                    
+
                     // Check Retry-After header
                     if (res.headers['retry-after']) {
                         const headerValue = res.headers['retry-after'];
@@ -688,13 +708,13 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                             retryAfterSeconds = parsed;
                         }
                     }
-                    
+
                     // Try to parse from response body
                     try {
-                        const errorBody = JSON.parse(buffer);
-                        if (errorBody.error?.message) {
+                        const parsedError = JSON.parse(errorBody);
+                        if (parsedError.error?.message) {
                             // Look for "Please retry in Xs" pattern
-                            const retryMatch = errorBody.error.message.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
+                            const retryMatch = parsedError.error.message.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
                             if (retryMatch) {
                                 retryAfterSeconds = Math.ceil(parseFloat(retryMatch[1]));
                             }
@@ -702,9 +722,9 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                     } catch (e) {
                         // Ignore parse errors
                     }
-                    
-                    console.log(`[GROQ LLAMA] Rate limited for ${retryAfterSeconds} seconds`);
-                    
+
+                    console.log(`[GROQ] Rate limited for ${retryAfterSeconds} seconds`);
+
                     // Notify renderer about rate limit with pending request for auto-retry
                     sendToRenderer('rate-limit-hit', {
                         retryAfterSeconds: retryAfterSeconds,
@@ -716,18 +736,18 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                         },
                     });
                     sendToRenderer('update-status', `Rate limited (${retryAfterSeconds}s)`);
-                    
+
                     reject(new Error(`Groq Llama API rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
-                    console.error('[GROQ LLAMA] API Error:', res.statusCode, buffer);
+                    console.error('[GROQ] API Error:', res.statusCode, errorBody);
                     sendToRenderer('update-status', 'Error');
-                    reject(new Error(`Groq Llama API error: ${res.statusCode}`));
+                    reject(new Error(`Groq Llama API error: ${res.statusCode} - ${errorBody}`));
                 }
             });
         });
 
         req.on('error', e => {
-            console.error('[GROQ LLAMA] Request error:', e);
+            console.error('[GROQ] Request error:', e);
             sendToRenderer('update-status', 'Error');
             reject(e);
         });
@@ -742,7 +762,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
  */
 function clearConversationHistory() {
     conversationHistory = [];
-    console.log('[GROQ LLAMA] Conversation history cleared');
+    console.log('[GROQ] Conversation history cleared');
 }
 
 /**

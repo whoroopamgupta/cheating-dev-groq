@@ -461,12 +461,12 @@ export class CustomizeView extends LitElement {
         this.selectedImageQuality = 'high';
         this.layoutMode = 'compact';
         this.keybinds = this.getDefaultKeybinds();
-        this.onProfileChange = () => {};
-        this.onLanguageChange = () => {};
-        this.onScreenshotIntervalChange = () => {};
-        this.onImageQualityChange = () => {};
-        this.onLayoutModeChange = () => {};
-        this.onAdvancedModeChange = () => {};
+        this.onProfileChange = () => { };
+        this.onLanguageChange = () => { };
+        this.onScreenshotIntervalChange = () => { };
+        this.onImageQualityChange = () => { };
+        this.onLayoutModeChange = () => { };
+        this.onAdvancedModeChange = () => { };
 
         // Google Search default
         this.googleSearchEnabled = true;
@@ -490,7 +490,7 @@ export class CustomizeView extends LitElement {
         // Mode and model selection defaults
         this.selectedMode = 'interview';
         this.selectedModel = 'gemini-2.5-pro';
-        this.selectedGroqModel = 'llama-4-maverick';
+        this.selectedGroqModel = 'gpt-oss-120b';
 
         // Exam Groq auto-capture default (disabled by default)
         this.examGroqAutoCapture = false;
@@ -1109,11 +1109,18 @@ export class CustomizeView extends LitElement {
     loadModeSettings() {
         const selectedMode = localStorage.getItem('selectedMode');
         const selectedModel = localStorage.getItem('selectedModel');
-        const selectedGroqModel = localStorage.getItem('selectedGroqModel');
+        let selectedGroqModel = localStorage.getItem('selectedGroqModel');
+
+        // Migrate deprecated model keys
+        const DEPRECATED_MODEL_MAP = { 'llama-4-maverick': 'gpt-oss-120b', 'llama-4-scout': 'gpt-oss-20b' };
+        if (selectedGroqModel && DEPRECATED_MODEL_MAP[selectedGroqModel]) {
+            selectedGroqModel = DEPRECATED_MODEL_MAP[selectedGroqModel];
+            localStorage.setItem('selectedGroqModel', selectedGroqModel);
+        }
 
         this.selectedMode = selectedMode || 'interview';
         this.selectedModel = selectedModel || 'gemini-2.5-pro';
-        this.selectedGroqModel = selectedGroqModel || 'llama-4-maverick';
+        this.selectedGroqModel = selectedGroqModel || 'gpt-oss-120b';
     }
 
     loadExamGroqAutoCapture() {
@@ -1210,9 +1217,8 @@ export class CustomizeView extends LitElement {
                             <label class="form-label">Custom AI Instructions</label>
                             <textarea
                                 class="form-control"
-                                placeholder="Add specific instructions for how you want the AI to behave during ${
-                                    profileNames[this.selectedProfile] || 'this interaction'
-                                }..."
+                                placeholder="Add specific instructions for how you want the AI to behave during ${profileNames[this.selectedProfile] || 'this interaction'
+            }..."
                                 .value=${localStorage.getItem('customPrompt') || ''}
                                 rows="4"
                                 @input=${this.handleCustomPromptInput}
@@ -1232,9 +1238,8 @@ export class CustomizeView extends LitElement {
                     </div>
 
                     <div class="form-grid">
-                        ${
-                            this.selectedProfile === 'exam'
-                                ? html`
+                        ${this.selectedProfile === 'exam'
+                ? html`
                                       <!-- Exam Assistant mode: Only Coding/OA mode available -->
                                       <div class="form-row">
                                           <div class="form-group">
@@ -1252,28 +1257,28 @@ export class CustomizeView extends LitElement {
                                               <custom-dropdown
                                                   .value=${this.selectedModel}
                                                   .options=${[
-                                                      {
-                                                          value: 'gemini-2.5-flash',
-                                                          label: 'Gemini 2.5 Flash (Faster, Balanced)',
-                                                          icon: './assets/models/500px-Google_Gemini_icon_2025.svg.png',
-                                                      },
-                                                      {
-                                                          value: 'gemini-2.5-pro',
-                                                          label: 'Gemini 2.5 Pro (Slower, More Accurate)',
-                                                          icon: './assets/models/500px-Google_Gemini_icon_2025.svg.png',
-                                                      },
-                                                  ]}
+                        {
+                            value: 'gemini-2.5-flash',
+                            label: 'Gemini 2.5 Flash (Faster, Balanced)',
+                            icon: './assets/models/500px-Google_Gemini_icon_2025.svg.png',
+                        },
+                        {
+                            value: 'gemini-2.5-pro',
+                            label: 'Gemini 2.5 Pro (Slower, More Accurate)',
+                            icon: './assets/models/500px-Google_Gemini_icon_2025.svg.png',
+                        },
+                    ]}
                                                   @change=${e => this.handleModelChange({ target: { value: e.detail.value } })}
                                               ></custom-dropdown>
                                               <div class="form-description">
                                                   ${this.selectedModel === 'gemini-2.5-flash'
-                                                      ? 'Gemini 2.5 Flash: Faster responses, good for time-sensitive coding assessments.'
-                                                      : 'Gemini 2.5 Pro: More accurate and detailed responses, better for complex problems.'}
+                        ? 'Gemini 2.5 Flash: Faster responses, good for time-sensitive coding assessments.'
+                        : 'Gemini 2.5 Pro: More accurate and detailed responses, better for complex problems.'}
                                               </div>
                                           </div>
                                       </div>
                                   `
-                                : html`
+                : html`
                                       <!-- Other profiles: Interview mode with Groq/Llama -->
                                       <div class="form-row">
                                           <div class="form-group">
@@ -1281,7 +1286,7 @@ export class CustomizeView extends LitElement {
                                               <div class="mode-display-box">🎤 Interview Mode (Real-time Audio)</div>
                                               <div class="form-description">
                                                   ${this.getProfileNames()[this.selectedProfile]} profile uses Groq Whisper for speech-to-text and
-                                                  Llama 4 for response generation.
+                                                  GPT OSS for response generation.
                                               </div>
                                           </div>
                                       </div>
@@ -1292,29 +1297,29 @@ export class CustomizeView extends LitElement {
                                               <custom-dropdown
                                                   .value=${this.selectedGroqModel}
                                                   .options=${[
-                                                      {
-                                                          value: 'llama-4-maverick',
-                                                          label: 'Llama 4 Maverick (Fast, More Accurate)',
-                                                          icon: './assets/models/metalogo.dcf881ba.svg',
-                                                      },
-                                                      {
-                                                          value: 'llama-4-scout',
-                                                          label: 'Llama 4 Scout (Faster, Balanced)',
-                                                          icon: './assets/models/metalogo.dcf881ba.svg',
-                                                      },
-                                                  ]}
+                        {
+                            value: 'gpt-oss-120b',
+                            label: 'GPT OSS 120B (Accurate, Powerful)',
+                            icon: './assets/models/openai_logo.png',
+                        },
+                        {
+                            value: 'gpt-oss-20b',
+                            label: 'GPT OSS 20B (Faster, Lightweight)',
+                            icon: './assets/models/openai_logo.png',
+                        },
+                    ]}
                                                   @change=${this.handleGroqModelChange}
                                               ></custom-dropdown>
                                               <div class="form-description">
-                                                  ${this.selectedGroqModel === 'llama-4-maverick'
-                                                      ? 'Llama 4 Maverick: 17B parameters with 128 experts. More accurate and detailed responses for complex questions.'
-                                                      : 'Llama 4 Scout: 17B parameters with 16 experts. Faster responses, ideal for quick interactions.'}
+                                                  ${this.selectedGroqModel === 'gpt-oss-120b'
+                        ? 'GPT OSS 120B: 120B parameters MoE model. More accurate and detailed responses for complex questions.'
+                        : 'GPT OSS 20B: 20B parameters MoE model. Faster responses, ideal for quick interactions.'}
                                               </div>
                                           </div>
                                       </div>
 
                                       ${this.selectedProfile === 'exam-groq'
-                                          ? html`
+                        ? html`
                                                 <!-- Auto-capture toggle for Exam Assistant (Groq) -->
                                                 <div class="form-group full-width" style="margin-top: 12px;">
                                                     <div class="checkbox-group">
@@ -1331,17 +1336,17 @@ export class CustomizeView extends LitElement {
                                                     </div>
                                                     <div class="form-description">
                                                         ${this.examGroqAutoCapture
-                                                            ? html`<strong style="color: #34d399;">Enabled:</strong> The app will automatically
+                                ? html`<strong style="color: #34d399;">Enabled:</strong> The app will automatically
                                                                   capture and analyze your screen every 10 seconds. Great for proctored exams where
                                                                   you can't manually trigger captures.`
-                                                            : html`<strong>Disabled:</strong> Manual capture only. Press
+                                : html`<strong>Disabled:</strong> Manual capture only. Press
                                                                   <strong>Ctrl+Enter</strong> to analyze screen on demand.`}
                                                     </div>
                                                 </div>
                                             `
-                                          : ''}
+                        : ''}
                                   `
-                        }
+            }
                     </div>
                 </div>
 
@@ -1370,9 +1375,8 @@ export class CustomizeView extends LitElement {
                             </div>
                         </div>
 
-                        ${
-                            this.selectedProfile === 'interview' && this.vadEnabled
-                                ? html`
+                        ${this.selectedProfile === 'interview' && this.vadEnabled
+                ? html`
                                       <div class="form-row">
                                           <div class="form-group">
                                               <label class="form-label">
@@ -1384,9 +1388,9 @@ export class CustomizeView extends LitElement {
                                               <custom-dropdown
                                                   .value=${this.vadMode}
                                                   .options=${[
-                                                      { value: 'automatic', label: 'Smart Detection (Auto)' },
-                                                      { value: 'manual', label: 'Manual Control (Push-to-Talk)' },
-                                                  ]}
+                        { value: 'automatic', label: 'Smart Detection (Auto)' },
+                        { value: 'manual', label: 'Manual Control (Push-to-Talk)' },
+                    ]}
                                                   @change=${this.handleVADModeChange}
                                               ></custom-dropdown>
                                           </div>
@@ -1394,16 +1398,16 @@ export class CustomizeView extends LitElement {
                                       <div class="form-group full-width">
                                           <div class="form-description">
                                               ${this.vadMode === 'automatic'
-                                                  ? html`<strong>Smart Detection:</strong> VAD automatically detects speech and silence. Best for
+                        ? html`<strong>Smart Detection:</strong> VAD automatically detects speech and silence. Best for
                                                         natural conversations where the interviewer speaks continuously.`
-                                                  : html`<strong>Manual Control:</strong> Click the microphone button to start listening. VAD captures
+                        : html`<strong>Manual Control:</strong> Click the microphone button to start listening. VAD captures
                                                         the entire question (including pauses) until you click again to generate the response. Perfect
                                                         for interviewers who pause frequently mid-sentence.`}
                                           </div>
                                       </div>
                                   `
-                                : ''
-                        }
+                : ''
+            }
                     </div>
                 </div>
 
@@ -1419,16 +1423,16 @@ export class CustomizeView extends LitElement {
                                 <custom-dropdown
                                     .value=${localStorage.getItem('stealthProfile') || 'ultra'}
                                     .options=${[
-                                        { value: 'visible', label: 'Visible' },
-                                        { value: 'balanced', label: 'Balanced' },
-                                        { value: 'ultra', label: 'Ultra-Stealth' },
-                                    ]}
+                { value: 'visible', label: 'Visible' },
+                { value: 'balanced', label: 'Balanced' },
+                { value: 'ultra', label: 'Ultra-Stealth' },
+            ]}
                                     @change=${e => {
-                                        localStorage.setItem('stealthProfile', e.detail.value);
-                                        // We need to notify the main process to restart for some settings to apply
-                                        alert('Restart the application for stealth changes to take full effect.');
-                                        this.requestUpdate();
-                                    }}
+                localStorage.setItem('stealthProfile', e.detail.value);
+                // We need to notify the main process to restart for some settings to apply
+                alert('Restart the application for stealth changes to take full effect.');
+                this.requestUpdate();
+            }}
                                 ></custom-dropdown>
                                 <div class="form-description">
                                     Adjusts visibility and detection resistance. A restart is required for changes to apply.
@@ -1589,20 +1593,19 @@ export class CustomizeView extends LitElement {
                                 <custom-dropdown
                                     .value=${this.selectedImageQuality}
                                     .options=${[
-                                        { value: 'high', label: 'High Quality' },
-                                        { value: 'medium', label: 'Medium Quality' },
-                                        { value: 'low', label: 'Low Quality' },
-                                    ]}
+                { value: 'high', label: 'High Quality' },
+                { value: 'medium', label: 'Medium Quality' },
+                { value: 'low', label: 'Low Quality' },
+            ]}
                                     @change=${e => this.handleImageQualitySelect({ target: { value: e.detail.value } })}
                                 ></custom-dropdown>
                                 <div class="form-description">
-                                    ${
-                                        this.selectedImageQuality === 'high'
-                                            ? 'Best quality, uses more tokens'
-                                            : this.selectedImageQuality === 'medium'
-                                              ? 'Balanced quality and token usage'
-                                              : 'Lower quality, uses fewer tokens'
-                                    }
+                                    ${this.selectedImageQuality === 'high'
+                ? 'Best quality, uses more tokens'
+                : this.selectedImageQuality === 'medium'
+                    ? 'Balanced quality and token usage'
+                    : 'Lower quality, uses fewer tokens'
+            }
                                 </div>
                             </div>
                         </div>
@@ -1624,7 +1627,7 @@ export class CustomizeView extends LitElement {
                         </thead>
                         <tbody>
                             ${this.getKeybindActions().map(
-                                action => html`
+                action => html`
                                     <tr>
                                         <td>
                                             <div class="action-name">${action.name}</div>
@@ -1644,7 +1647,7 @@ export class CustomizeView extends LitElement {
                                         </td>
                                     </tr>
                                 `
-                            )}
+            )}
                             <tr class="table-reset-row">
                                 <td colspan="2">
                                     <button class="reset-keybinds-button" @click=${this.resetKeybinds}>Reset to Defaults</button>

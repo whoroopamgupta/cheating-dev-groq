@@ -38,11 +38,11 @@ describe('Groq Module Tests', () => {
     });
 
     describe('Llama Model Configuration', () => {
-        it('should support llama-4-maverick model', () => {
-            // Maverick is the default, more accurate model
+        it('should support gpt-oss-120b model', () => {
+            // GPT OSS 120B is the default, more accurate model
             const profile = 'interview';
             const systemPrompt = 'You are a helpful interview assistant.';
-            const model = 'llama-4-maverick';
+            const model = 'gpt-oss-120b';
 
             // setLlamaConfig should accept model parameter
             expect(() => {
@@ -50,18 +50,18 @@ describe('Groq Module Tests', () => {
             }).not.toThrow();
         });
 
-        it('should support llama-4-scout model', () => {
-            // Scout is the faster, lighter model
+        it('should support gpt-oss-20b model', () => {
+            // GPT OSS 20B is the faster, lighter model
             const profile = 'interview';
             const systemPrompt = 'You are a helpful interview assistant.';
-            const model = 'llama-4-scout';
+            const model = 'gpt-oss-20b';
 
             expect(() => {
                 groq.setLlamaConfig(profile, systemPrompt, model);
             }).not.toThrow();
         });
 
-        it('should default to maverick when no model specified', () => {
+        it('should default to gpt-oss-120b when no model specified', () => {
             const profile = 'sales';
             const systemPrompt = 'You are a sales assistant.';
 
@@ -88,17 +88,17 @@ describe('Groq Module Tests', () => {
 
             profiles.forEach(profile => {
                 expect(() => {
-                    groq.setLlamaConfig(profile, systemPrompt, 'llama-4-maverick');
+                    groq.setLlamaConfig(profile, systemPrompt, 'gpt-oss-120b');
                 }).not.toThrow();
             });
         });
 
         it('should clear conversation history on config change', () => {
             // First set a config
-            groq.setLlamaConfig('interview', 'Prompt 1', 'llama-4-maverick');
+            groq.setLlamaConfig('interview', 'Prompt 1', 'gpt-oss-120b');
 
             // Then change config - this should clear history
-            groq.setLlamaConfig('sales', 'Prompt 2', 'llama-4-scout');
+            groq.setLlamaConfig('sales', 'Prompt 2', 'gpt-oss-20b');
 
             // clearConversationHistory should work without error
             expect(() => {
@@ -194,7 +194,7 @@ describe('Groq Module Tests', () => {
             groq.initializeGroq('test-key');
 
             // 2. Set Llama config for interview
-            groq.setLlamaConfig('interview', 'Help with interview questions', 'llama-4-maverick');
+            groq.setLlamaConfig('interview', 'Help with interview questions', 'gpt-oss-120b');
 
             // 3. Buffer should be ready
             groq.clearAudioBuffer();
@@ -204,11 +204,11 @@ describe('Groq Module Tests', () => {
         it('should support switching between models', () => {
             groq.initializeGroq('test-key');
 
-            // Start with Maverick
-            groq.setLlamaConfig('interview', 'Prompt 1', 'llama-4-maverick');
+            // Start with GPT OSS 120B
+            groq.setLlamaConfig('interview', 'Prompt 1', 'gpt-oss-120b');
 
-            // Switch to Scout
-            groq.setLlamaConfig('interview', 'Prompt 2', 'llama-4-scout');
+            // Switch to GPT OSS 20B
+            groq.setLlamaConfig('interview', 'Prompt 2', 'gpt-oss-20b');
 
             // Should work without errors
             expect(groq.isGroqInitialized()).toBe(true);
@@ -216,20 +216,60 @@ describe('Groq Module Tests', () => {
     });
 
     describe('Model Selection Validation', () => {
-        const validModels = ['llama-4-maverick', 'llama-4-scout'];
+        const validModels = ['gpt-oss-120b', 'gpt-oss-20b'];
 
-        it('should have exactly 2 supported Llama models', () => {
+        it('should have exactly 2 supported Groq models', () => {
             expect(validModels.length).toBe(2);
         });
 
-        it('llama-4-maverick should be the default model', () => {
-            // Maverick is default, used for more accurate responses
-            expect(validModels).toContain('llama-4-maverick');
+        it('gpt-oss-120b should be the default model', () => {
+            // GPT OSS 120B is default, used for more accurate responses
+            expect(validModels).toContain('gpt-oss-120b');
         });
 
-        it('llama-4-scout should be available for faster responses', () => {
-            // Scout is for faster, lighter responses
-            expect(validModels).toContain('llama-4-scout');
+        it('gpt-oss-20b should be available for faster responses', () => {
+            // GPT OSS 20B is for faster, lighter responses
+            expect(validModels).toContain('gpt-oss-20b');
+        });
+    });
+
+    describe('Hybrid Vision Routing', () => {
+        const textModels = ['gpt-oss-120b', 'gpt-oss-20b'];
+        const visionModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
+
+        it('should have 2 text models and 1 vision model', () => {
+            expect(textModels.length).toBe(2);
+            expect(visionModel).toBeDefined();
+        });
+
+        it('text models should be GPT OSS (OpenAI)', () => {
+            textModels.forEach(model => {
+                expect(['gpt-oss-120b', 'gpt-oss-20b']).toContain(model);
+            });
+        });
+
+        it('vision model should be Llama 4 Scout', () => {
+            expect(visionModel).toBe('meta-llama/llama-4-scout-17b-16e-instruct');
+        });
+
+        it('vision model should be different from text models', () => {
+            textModels.forEach(model => {
+                expect(visionModel).not.toBe(model);
+            });
+        });
+
+        it('should use text model for voice-only requests', () => {
+            // When no image is provided, GPT OSS should be used
+            const hasImage = false;
+            const modelToUse = hasImage ? visionModel : 'openai/gpt-oss-120b';
+            expect(modelToUse).toBe('openai/gpt-oss-120b');
+        });
+
+        it('should use Scout for screenshot analysis', () => {
+            // When image is provided, Scout should be used for vision
+            const hasImage = true;
+            const modelToUse = hasImage ? visionModel : 'openai/gpt-oss-120b';
+            expect(modelToUse).toBe('meta-llama/llama-4-scout-17b-16e-instruct');
         });
     });
 });
