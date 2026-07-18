@@ -217,7 +217,7 @@ async function transcribeWithGroq(wavBuffer) {
                                 retryAfterSeconds = Math.ceil(parseFloat(retryMatch[1]));
                             }
                         }
-                    } catch (e) { }
+                    } catch (e) {}
 
                     console.log(`[GROQ WHISPER] Rate limited for ${retryAfterSeconds} seconds`);
 
@@ -586,7 +586,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                 role: 'user',
                 content: userContent,
             });
-            console.log(`[GROQ] Vision request: image size ~${Math.round(imageBase64.length * 0.75 / 1024)}KB`);
+            console.log(`[GROQ] Vision request: image size ~${Math.round((imageBase64.length * 0.75) / 1024)}KB`);
         } else {
             // Text-only request: use plain string for GPT OSS
             messages.push({
@@ -595,13 +595,21 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             });
         }
 
-        const requestBody = JSON.stringify({
+        const payload = {
             model: modelToUse,
             messages: messages,
             temperature: 0.7,
             max_tokens: 4096,
             stream: true, // Enable streaming for faster perceived response
-        });
+        };
+
+        // Groq reasoning models (Qwen 3.6-27b and GPT OSS series) output thinking tokens.
+        // We set reasoning_format to 'hidden' to prevent these from streaming to the UI.
+        if (modelToUse === 'qwen/qwen3.6-27b' || modelToUse.includes('gpt-oss-')) {
+            payload.reasoning_format = 'hidden';
+        }
+
+        const requestBody = JSON.stringify(payload);
 
         const url = new URL(`${GROQ_API_BASE}/chat/completions`);
 
@@ -668,7 +676,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                             if (content) {
                                 fullResponse += content;
                             }
-                        } catch (e) { }
+                        } catch (e) {}
                     }
 
                     if (fullResponse) {
