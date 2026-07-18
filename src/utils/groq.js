@@ -508,7 +508,8 @@ const GROQ_MODELS = {
 };
 
 // Vision model for screenshot analysis (only vision-capable model on Groq)
-const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Note: llama-4-scout-17b was deprecated June 17, 2026 — replaced with Qwen3.6 27B
+const VISION_MODEL = 'qwen/qwen3.6-27b';
 
 // Default to GPT OSS 120B for text generation
 let currentLlamaModel = GROQ_MODELS['gpt-oss-120b'];
