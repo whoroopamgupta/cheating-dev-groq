@@ -609,6 +609,12 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             payload.reasoning_format = 'hidden';
         }
 
+        // Disable reasoning for the vision model to achieve instant responses (~300ms)
+        // and prevent rate-limit queue stacking during auto-capture.
+        if (modelToUse === 'qwen/qwen3.6-27b') {
+            payload.reasoning_effort = 'none';
+        }
+
         const requestBody = JSON.stringify(payload);
 
         const url = new URL(`${GROQ_API_BASE}/chat/completions`);
