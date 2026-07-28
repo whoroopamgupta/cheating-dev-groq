@@ -777,11 +777,12 @@ function setupWindowIpcHandlers(mainWindow, sendToRenderer, geminiSessionRef) {
             let targetWidth, targetHeight;
 
             // Determine base size from layout mode - Optimal height, comfortable width
-            const baseWidth = layoutMode === 'compact' ? 650 : 800;
+            const baseWidth = layoutMode === 'compact' ? 670 : 820;
             const baseHeight = layoutMode === 'compact' ? 350 : 450;
 
             // Adjust height based on view
             switch (viewName) {
+                case 'profile':
                 case 'customize':
                 case 'settings':
                     targetWidth = baseWidth;

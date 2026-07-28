@@ -164,6 +164,32 @@ export class AppHeader extends LitElement {
             font-size: 12px;
             margin: 0px;
         }
+
+        .back-button {
+            -webkit-app-region: no-drag;
+            background: none;
+            color: var(--icon-button-color, rgba(255, 255, 255, 0.6));
+            border: none;
+            padding: 4px 10px 4px 6px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .back-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .back-button:hover {
+            background: var(--hover-background, rgba(255, 255, 255, 0.08));
+            color: var(--text-color, #e5e5e7);
+        }
     `;
 
     static properties = {
@@ -328,6 +354,7 @@ export class AppHeader extends LitElement {
         const titles = {
             onboarding: 'Welcome to Cheating Dev',
             main: 'Cheating Dev',
+            profile: 'AI Profile & Behavior',
             customize: 'Customize',
             help: 'Help & Shortcuts',
             history: 'Conversation History',
@@ -381,7 +408,7 @@ export class AppHeader extends LitElement {
     }
 
     isNavigationView() {
-        const navigationViews = ['customize', 'help', 'advanced', 'history'];
+        const navigationViews = ['profile', 'customize', 'help', 'advanced', 'history'];
         return navigationViews.includes(this.currentView);
     }
 
@@ -435,147 +462,7 @@ export class AppHeader extends LitElement {
                               </span>
                           `
                 : ''}
-                    ${this.currentView === 'main'
-                ? html`
-                              ${this.advancedMode
-                        ? html`
-                                        <button class="icon-button" @click=${this.onAdvancedClick}>
-                                            <?xml version="1.0" encoding="UTF-8"?><svg
-                                                width="24px"
-                                                stroke-width="1.7"
-                                                height="24px"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                color="currentColor"
-                                            >
-                                                <path d="M18.5 15L5.5 15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
-                                                <path
-                                                    d="M16 4L8 4"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                                <path
-                                                    d="M9 4.5L9 10.2602C9 10.7376 8.82922 11.1992 8.51851 11.5617L3.48149 17.4383C3.17078 17.8008 3 18.2624 3 18.7398V19C3 20.1046 3.89543 21 5 21L19 21C20.1046 21 21 20.1046 21 19V18.7398C21 18.2624 20.8292 17.8008 20.5185 17.4383L15.4815 11.5617C15.1708 11.1992 15 10.7376 15 10.2602L15 4.5"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                                <path
-                                                    d="M12 9.01L12.01 8.99889"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                                <path
-                                                    d="M11 2.01L11.01 1.99889"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                            </svg>
-                                        </button>
-                                    `
-                        : ''}
-                              <button class="icon-button" @click=${this.onCustomizeClick}>
-                                  <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
-                                  >
-                                      <path
-                                          d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                              </button>
-                              <button class="icon-button" @click=${this.onHelpClick}>
-                                  <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
-                                  >
-                                      <path
-                                          d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M12 18.01L12.01 17.9989"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                              </button>
-                              <button class="icon-button" @click=${this.onHistoryClick} title="Conversation History">
-                                  <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
-                                  >
-                                      <path
-                                          d="M12 8V12L15 15"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M3.05078 11.0001C3.27441 7.60061 5.22415 4.60729 8.14258 3.11572C11.061 1.62415 14.5625 1.85742 17.2725 3.72949C19.9824 5.60156 21.4951 8.83301 21.2715 12.2324C21.0479 15.6318 19.0981 18.6252 16.1797 20.1167C13.2612 21.6083 9.75977 21.375 7.0498 19.503"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M6 6L3 3M3 3V6M3 3H6"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                              </button>
-                          `
-                : ''}
+
                     ${this.currentView === 'assistant'
                 ? html`
                               <button @click=${this.onCloseClick} class="icon-button window-close">
@@ -598,8 +485,31 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
+                : this.isNavigationView()
+                ? html`
+                              <button @click=${this.onBackClick} class="back-button">
+                                  <svg
+                                      width="24px"
+                                      height="24px"
+                                      stroke-width="1.7"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      color="currentColor"
+                                  >
+                                      <path
+                                          d="M15 6L9 12L15 18"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                  </svg>
+                                  Home
+                              </button>
+                          `
                 : html`
-                              <button @click=${this.isNavigationView() ? this.onBackClick : this.onCloseClick} class="icon-button window-close">
+                              <button @click=${this.onCloseClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
                                       height="24px"

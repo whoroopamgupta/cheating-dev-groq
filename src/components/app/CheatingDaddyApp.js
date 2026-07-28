@@ -2,6 +2,7 @@ import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { AppHeader } from './AppHeader.js';
 import { MainView } from '../views/MainView.js';
 import { CustomizeView } from '../views/CustomizeView.js';
+import { ProfileView } from '../views/ProfileView.js';
 import { HelpView } from '../views/HelpView.js';
 import { HistoryView } from '../views/HistoryView.js';
 import { AssistantView } from '../views/AssistantView.js';
@@ -36,12 +37,81 @@ export class CheatingDaddyApp extends LitElement {
             height: 100vh;
             border-radius: 7px;
             overflow: hidden;
+            display: flex;
+            flex-direction: row;
+        }
+
+        .sidebar {
+            width: 60px;
+            background: var(--header-background);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 0;
+            gap: 4px;
+            -webkit-app-region: drag;
+        }
+
+        .sidebar-icon-button {
+            -webkit-app-region: no-drag;
+            position: relative;
+            background: none;
+            color: var(--icon-button-color, rgba(255, 255, 255, 0.5));
+            border: none;
+            width: 48px;
+            height: 48px;
+            padding: 0;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .sidebar-icon-button svg {
+            width: 17px;
+            height: 17px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-icon-button span {
+            font-size: 9px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .sidebar-icon-button::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 50%;
+            transform: translateY(-50%) scaleY(0);
+            width: 3px;
+            height: 16px;
+            border-radius: 0 3px 3px 0;
+            background: var(--accent-color, #007aff);
+            transition: transform 0.2s ease;
+        }
+
+        .sidebar-icon-button:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-color, #e5e5e7);
+        }
+
+        .sidebar-icon-button:hover::before {
+            transform: translateY(-50%) scaleY(1);
         }
 
         .container {
             display: flex;
             flex-direction: column;
             height: 100%;
+            flex: 1;
         }
 
         .main-content {
@@ -548,6 +618,11 @@ export class CheatingDaddyApp extends LitElement {
     }
 
     // Header event handlers
+    handleProfileViewClick() {
+        this.currentView = 'profile';
+        this.requestUpdate();
+    }
+
     handleCustomizeClick() {
         this.currentView = 'customize';
         this.requestUpdate();
@@ -1244,6 +1319,14 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                     ></main-view>
                 `;
 
+            case 'profile':
+                return html`
+                    <profile-view
+                        .selectedProfile=${this.selectedProfile}
+                        .onProfileChange=${profile => this.handleProfileChange(profile)}
+                    ></profile-view>
+                `;
+
             case 'customize':
                 return html`
                     <customize-view
@@ -1313,6 +1396,155 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
         return html`
             <div class="window-container">
+                ${this.currentView === 'main' ? html`
+                <div class="sidebar">
+                    ${this.advancedMode
+                        ? html`
+                                        <button class="sidebar-icon-button" @click=${() => this.handleAdvancedClick()}>
+                                            <?xml version="1.0" encoding="UTF-8"?><svg
+                                                width="24px"
+                                                stroke-width="1.7"
+                                                height="24px"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                color="currentColor"
+                                            >
+                                                <path d="M18.5 15L5.5 15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+                                                <path
+                                                    d="M16 4L8 4"
+                                                    stroke="currentColor"
+                                                    stroke-width="1.7"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                ></path>
+                                                <path
+                                                    d="M9 4.5L9 10.2602C9 10.7376 8.82922 11.1992 8.51851 11.5617L3.48149 17.4383C3.17078 17.8008 3 18.2624 3 18.7398V19C3 20.1046 3.89543 21 5 21L19 21C20.1046 21 21 20.1046 21 19V18.7398C21 18.2624 20.8292 17.8008 20.5185 17.4383L15.4815 11.5617C15.1708 11.1992 15 10.7376 15 10.2602L15 4.5"
+                                                    stroke="currentColor"
+                                                    stroke-width="1.7"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                ></path>
+                                                <path
+                                                    d="M12 9.01L12.01 8.99889"
+                                                    stroke="currentColor"
+                                                    stroke-width="1.7"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                ></path>
+                                                <path
+                                                    d="M11 2.01L11.01 1.99889"
+                                                    stroke="currentColor"
+                                                    stroke-width="1.7"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                ></path>
+                                            </svg>
+                                            <span>Advanced</span>
+                                        </button>
+                                    `
+                        : ''}
+                              <button class="sidebar-icon-button" @click=${() => this.handleProfileViewClick()}>
+                                  <?xml version="1.0" encoding="UTF-8"?><svg width="24px" height="24px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="currentColor"/></svg>
+                                  <span>Profile</span>
+                              </button>
+                              <button class="sidebar-icon-button" @click=${() => this.handleCustomizeClick()}>
+                                  <?xml version="1.0" encoding="UTF-8"?><svg
+                                      width="24px"
+                                      height="24px"
+                                      stroke-width="1.7"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      color="currentColor"
+                                  >
+                                      <path
+                                          d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                  </svg>
+                                  <span>Customize</span>
+                              </button>
+                              <button class="sidebar-icon-button" @click=${() => this.handleHelpClick()}>
+                                  <?xml version="1.0" encoding="UTF-8"?><svg
+                                      width="24px"
+                                      height="24px"
+                                      stroke-width="1.7"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      color="currentColor"
+                                  >
+                                      <path
+                                          d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M12 18.01L12.01 17.9989"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                  </svg>
+                                  <span>Help</span>
+                              </button>
+                              <button class="sidebar-icon-button" @click=${() => this.handleHistoryClick()}>
+                                  <?xml version="1.0" encoding="UTF-8"?><svg
+                                      width="24px"
+                                      height="24px"
+                                      stroke-width="1.7"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      color="currentColor"
+                                  >
+                                      <path
+                                          d="M12 8V12L15 15"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M3.05078 11.0001C3.27441 7.60061 5.22415 4.60729 8.14258 3.11572C11.061 1.62415 14.5625 1.85742 17.2725 3.72949C19.9824 5.60156 21.4951 8.83301 21.2715 12.2324C21.0479 15.6318 19.0981 18.6252 16.1797 20.1167C13.2612 21.6083 9.75977 21.375 7.0498 19.503"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                      <path
+                                          d="M6 6L3 3M3 3V6M3 3H6"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                  </svg>
+                                  <span>History</span>
+                              </button>
+                </div>
+                ` : ''}
                 <div class="container">
                     ${showHeader
                 ? html`
