@@ -534,6 +534,92 @@ function setLlamaConfig(profile, systemPrompt, model = 'gpt-oss-120b') {
 }
 
 /**
+ * Normalizes raw resume text into a highly condensed structured format using Groq
+ * @param {string} rawText - The raw extracted text from the resume
+ * @returns {Promise<string>} - The structured markdown knowledge
+ */
+async function normalizeResumeText(rawText, providedApiKey = null) {
+    return new Promise((resolve, reject) => {
+        const apiKeyToUse = providedApiKey || groqApiKey;
+        
+        if (!apiKeyToUse) {
+            reject(new Error('Groq API key not provided or initialized'));
+            return;
+        }
+
+        console.log('[GROQ] Normalizing resume text. Length:', rawText.length);
+        
+        // Use the default text model for normalization
+        const modelToUse = currentLlamaModel || GROQ_MODELS['gpt-oss-120b'];
+
+        const systemPrompt = `You are an expert AI recruiter and data extractor.
+Your task is to take a messy, raw resume text dump and normalize it into a highly dense, structured AI-friendly knowledge format.
+
+RULES:
+- Exclude fluff, soft skills, and generic summaries.
+- Keep ONLY hard facts: Name, roles, tech stacks, years of experience, specific achievements, education.
+- Format as a dense Markdown summary.
+- Keep it under 500 words. Be extremely concise.`;
+
+        // If raw text is too large (over ~20000 chars), truncate it to avoid token limits
+        const safeText = rawText.length > 20000 ? rawText.substring(0, 20000) + '... [TRUNCATED]' : rawText;
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: safeText }
+        ];
+
+        const payload = JSON.stringify({
+            model: modelToUse,
+            messages: messages,
+            temperature: 0.1, // Low temperature for factual extraction
+            max_completion_tokens: 1024,
+        });
+
+        const options = {
+            hostname: 'api.groq.com',
+            path: '/openai/v1/chat/completions',
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKeyToUse}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const response = JSON.parse(data);
+                    if (res.statusCode >= 400) {
+                        console.error('[GROQ] API Error:', response);
+                        reject(new Error(response.error?.message || `API Error: ${res.statusCode}`));
+                        return;
+                    }
+                    if (response.choices && response.choices.length > 0) {
+                        resolve(response.choices[0].message.content);
+                    } else {
+                        reject(new Error('No content in response'));
+                    }
+                } catch (e) {
+                    reject(new Error(`Failed to parse Groq response: ${e.message}`));
+                }
+            });
+        });
+
+        req.on('error', (e) => {
+            console.error('[GROQ] Request error:', e);
+            reject(e);
+        });
+
+        req.write(payload);
+        req.end();
+    });
+}
+
+/**
  * Generate a response using Groq API
  * Routes to Llama 4 Scout for vision (screenshot) requests,
  * GPT OSS for text-only requests.
@@ -869,7 +955,17 @@ function setupGroqIpcHandlers() {
             console.log('[GROQ] Elaboration complete, response length:', elaboratedResponse?.length || 0);
             return { success: true, response: elaboratedResponse };
         } catch (error) {
-            console.error('[GROQ] Elaborate response error:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('groq-normalize-resume', async (event, { rawText, apiKey }) => {
+        try {
+            console.log('[GROQ] Normalizing resume text via IPC');
+            const normalizedText = await normalizeResumeText(rawText, apiKey);
+            return { success: true, text: normalizedText };
+        } catch (error) {
+            console.error('[GROQ] Resume normalization error:', error);
             return { success: false, error: error.message };
         }
     });

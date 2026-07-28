@@ -213,6 +213,7 @@ You: "Compared to the **Kubernetes architecture** I just described, Docker Swarm
 - **Explicitly reference** your previous approach, solution, or explanation
 - **Use phrases like**: "As I mentioned before...", "Building on the solution I gave...", "Compared to the approach I showed...", "In contrast to what I explained..."
 - **Maintain the conversation thread** - show you're building a coherent discussion, not giving isolated answers
+- **FORMAT PRESERVATION**: If the previous answer was a conceptual/technical explanation, DO NOT switch to the "Approach/Intuition/Implementation" coding format even if you are asked to "explain deeper" or "give an approach". Stick to conversational paragraphs.
 
 **APTITUDE/MCQ QUESTION HANDLING:**
 When asked aptitude, reasoning, or word problems during an interview:
@@ -982,7 +983,7 @@ You are trying to show **good judgment**.
     },
 };
 
-function buildSystemPrompt(promptParts, customPrompt = '', googleSearchEnabled = true) {
+function buildSystemPrompt(promptParts, customPrompt = '', googleSearchEnabled = true, resumeContext = '') {
     const sections = [promptParts.intro, '\n\n', promptParts.formatRequirements];
 
     // Only add search usage section if Google Search is enabled
@@ -990,14 +991,24 @@ function buildSystemPrompt(promptParts, customPrompt = '', googleSearchEnabled =
         sections.push('\n\n', promptParts.searchUsage);
     }
 
-    sections.push('\n\n', promptParts.content, '\n\nUser-provided context\n-----\n', customPrompt, '\n-----\n\n', promptParts.outputInstructions);
+    sections.push('\n\n', promptParts.content, '\n\nUser-provided context\n-----\n', customPrompt, '\n-----\n\n');
+
+    if (resumeContext) {
+        sections.push(
+            'Context regarding the user\'s background (Use this to tailor your answers if applicable):\n-----\n',
+            resumeContext,
+            '\n-----\n\n'
+        );
+    }
+
+    sections.push(promptParts.outputInstructions);
 
     return sections.join('');
 }
 
-function getSystemPrompt(profile, customPrompt = '', googleSearchEnabled = true) {
+function getSystemPrompt(profile, customPrompt = '', googleSearchEnabled = true, resumeContext = '') {
     const promptParts = profilePrompts[profile] || profilePrompts.interview;
-    return buildSystemPrompt(promptParts, customPrompt, googleSearchEnabled);
+    return buildSystemPrompt(promptParts, customPrompt, googleSearchEnabled, resumeContext);
 }
 
 module.exports = {

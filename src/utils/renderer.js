@@ -180,7 +180,8 @@ async function initializeGemini(profile = 'interview', language = 'en-US', mode 
             profile,
             language,
             selectedMode,
-            selectedModel
+            selectedModel,
+            localStorage.getItem('resumeContext') || ''
         );
         if (success) {
             cheddar.setStatus(selectedMode === 'interview' ? 'Live' : 'Ready');
@@ -245,6 +246,19 @@ ipcRenderer.on('groq-transcription', async (event, transcription) => {
     if (selectedMode === 'coding') {
         console.log('[GROQ] In coding/exam mode - skipping Llama generation');
         return;
+    }
+    // Auto-detect intent to scan the screen (e.g., "solve this question", "look at the screen")
+    const lowerTranscript = cleanTranscription.toLowerCase();
+    const screenIntentRegex = /(solve|look at|read|explain|analyze|check)\s+(this|the|that)?\s*(question|problem|code|screen|snippet|function)/i;
+    const directScreenMention = /on (the )?screen/i;
+    
+    if (screenIntentRegex.test(lowerTranscript) || directScreenMention.test(lowerTranscript)) {
+        console.log('[GROQ] Auto-detected screen analysis intent from transcription:', cleanTranscription);
+        cheddar.setStatus('Auto-scanning screen...');
+        if (window.captureManualScreenshot) {
+            await window.captureManualScreenshot();
+            return; // Skip standard text-only LLM generation since screenshot generation will handle it
+        }
     }
 
     // Generate response using Llama

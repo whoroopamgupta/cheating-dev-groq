@@ -424,18 +424,78 @@ export class ProfileView extends LitElement {
             font-size: 12px;
             margin-top: 1px;
         }
+
+        .resume-upload-box {
+            background: var(--upload-box-bg, rgba(255, 255, 255, 0.03));
+            border: 2px dashed var(--upload-box-border, rgba(255, 255, 255, 0.15));
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .resume-upload-box:hover {
+            background: var(--upload-box-hover-bg, rgba(255, 255, 255, 0.08));
+            border-color: var(--upload-box-hover-border, var(--accent-color, #007aff));
+        }
+
+        .resume-upload-box.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .resume-upload-icon {
+            width: 32px;
+            height: 32px;
+            color: var(--upload-icon-color, rgba(255, 255, 255, 0.6));
+        }
+
+        .resume-upload-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .resume-upload-subtext {
+            font-size: 11px;
+            color: var(--description-color, rgba(255, 255, 255, 0.5));
+        }
+
+        .resume-status {
+            font-size: 11px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .resume-status.success { color: var(--success-color, #34d399); }
+        .resume-status.error { color: var(--error-color, #ef4444); }
+        .resume-status.loading { color: var(--warning-color, #fbbf24); }
     `;
 
     static properties = {
         selectedProfile: { type: String },
         onProfileChange: { type: Function },
         selectedMode: { type: String },
+        isUploadingResume: { type: Boolean },
+        resumeUploadError: { type: String },
+        resumeUploadSuccess: { type: Boolean },
     };
 
     constructor() {
         super();
         this.selectedProfile = 'exam';
         this.selectedMode = 'interview';
+        this.isUploadingResume = false;
+        this.resumeUploadError = '';
+        this.resumeUploadSuccess = false;
         this.onProfileChange = () => { };
     }
 
@@ -572,6 +632,68 @@ export class ProfileView extends LitElement {
         return defaultInstructions[profile] || '';
     }
 
+    async handleResumeUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        this.isUploadingResume = true;
+        this.resumeUploadError = '';
+        this.resumeUploadSuccess = false;
+
+        try {
+            const { ipcRenderer } = window.require('electron');
+            
+            // 1. Send file path to main process to extract raw text
+            const extractResult = await ipcRenderer.invoke('process-resume', file.path);
+            
+            if (!extractResult.success) {
+                throw new Error(extractResult.error || 'Failed to extract text from file');
+            }
+
+            // 2. Send raw text to Groq API to normalize it
+            const apiKey = localStorage.getItem('apiKey')?.trim();
+            if (!apiKey) {
+                throw new Error('API key is missing. Please set your API key in the settings first.');
+            }
+            const normalizeResult = await ipcRenderer.invoke('groq-normalize-resume', { rawText: extractResult.text, apiKey });
+
+            if (!normalizeResult.success) {
+                throw new Error(normalizeResult.error || 'Failed to normalize resume text via Groq');
+            }
+
+            // 3. Save normalized context
+            localStorage.setItem('resumeContext', normalizeResult.text);
+            this.resumeUploadSuccess = true;
+            
+        } catch (err) {
+            console.error('Resume upload error:', err);
+            this.resumeUploadError = err.message || 'An error occurred during upload';
+        } finally {
+            this.isUploadingResume = false;
+            // Reset input so the same file can be uploaded again if needed
+            e.target.value = '';
+        }
+    }
+
+    renderResumeStatus() {
+        if (this.isUploadingResume) {
+            return html`<div class="resume-status loading">⏳ Processing via Groq AI... This may take a moment.</div>`;
+        }
+        if (this.resumeUploadError) {
+            return html`<div class="resume-status error">❌ ${this.resumeUploadError}</div>`;
+        }
+        if (this.resumeUploadSuccess) {
+            return html`<div class="resume-status success">✅ Resume knowledge updated successfully!</div>`;
+        }
+        
+        const existingContext = localStorage.getItem('resumeContext');
+        if (existingContext) {
+            return html`<div class="resume-status success">✅ Resume knowledge is active.</div>`;
+        }
+        
+        return html``;
+    }
+
     render() {
         const profiles = this.getProfiles();
         const profileNames = this.getProfileNames();
@@ -597,6 +719,29 @@ export class ProfileView extends LitElement {
                                     .options=${profiles.map(p => ({ value: p.value, label: p.name }))}
                                     @change=${e => this.handleProfileSelect({ target: { value: e.detail.value } })}
                                 ></custom-dropdown>
+                            </div>
+                        </div>
+
+                        <!-- Resume Upload Section -->
+                        <div class="form-group full-width">
+                            <label class="form-label">Background Knowledge (Resume)</label>
+                            <div>
+                                <input type="file" id="resume-upload-input" accept=".pdf,.docx,.txt" style="display: none" @change=${this.handleResumeUpload} />
+                                <div class="resume-upload-box ${this.isUploadingResume ? 'disabled' : ''}" @click=${() => !this.isUploadingResume && this.shadowRoot.getElementById('resume-upload-input').click()}>
+                                    <svg class="resume-upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <div class="resume-upload-text">
+                                        ${this.isUploadingResume ? 'Processing...' : 'Click to Upload Resume'}
+                                    </div>
+                                    <div class="resume-upload-subtext">
+                                        Supports PDF, DOCX, TXT
+                                    </div>
+                                </div>
+                                ${this.renderResumeStatus()}
+                            </div>
+                            <div class="form-description">
+                                Upload your resume to give the AI context about your background. The AI will extract key info to use in conversations.
                             </div>
                         </div>
 

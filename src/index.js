@@ -63,6 +63,7 @@ const { setupGroqIpcHandlers } = require('./utils/groq');
 const { initializeRandomProcessNames } = require('./utils/processRandomizer');
 const { applyAntiAnalysisMeasures } = require('./utils/stealthFeatures');
 const { getLocalConfig, writeConfig } = require('./config');
+const { extractTextFromFile } = require('./utils/documentProcessor');
 const path = require('path');
 const os = require('os');
 
@@ -286,6 +287,18 @@ function setupGeneralIpcHandlers() {
             return { success: true };
         } catch (error) {
             console.error('Error updating VAD setting:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // Resume processing handler
+    ipcMain.handle('process-resume', async (event, filePath) => {
+        try {
+            console.log(`[MAIN] Processing resume from path: ${filePath}`);
+            const rawText = await extractTextFromFile(filePath);
+            return { success: true, text: rawText };
+        } catch (error) {
+            console.error('[MAIN] Resume processing error:', error);
             return { success: false, error: error.message };
         }
     });

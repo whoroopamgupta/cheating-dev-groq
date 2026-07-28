@@ -269,7 +269,8 @@ async function initializeGeminiSession(
     language = 'en-US',
     isReconnection = false,
     mode = 'interview',
-    model = 'gemini-2.5-flash'
+    model = 'gemini-2.5-flash',
+    resumeContext = ''
 ) {
     if (isInitializingSession) {
         console.log('Session initialization already in progress');
@@ -304,7 +305,7 @@ async function initializeGeminiSession(
     const enabledTools = await getEnabledTools();
     const googleSearchEnabled = enabledTools.some(tool => tool.googleSearch);
 
-    let systemPrompt = getSystemPrompt(profile, customPrompt, googleSearchEnabled);
+    let systemPrompt = getSystemPrompt(profile, customPrompt, googleSearchEnabled, resumeContext);
 
     // Add explicit language instruction based on user's selected language
     const languageMap = {
@@ -1101,13 +1102,18 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle(
         'initialize-gemini',
-        async (event, apiKey, customPrompt, profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash') => {
-            const session = await initializeGeminiSession(apiKey, customPrompt, profile, language, false, mode, model);
-            if (session) {
-                geminiSessionRef.current = session;
-                return true;
+        async (event, apiKey, customPrompt, profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash', resumeContext = '') => {
+            try {
+                const session = await initializeGeminiSession(apiKey, customPrompt, profile, language, false, mode, model, resumeContext);
+                if (session) {
+                    geminiSessionRef.current = session;
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Error initializing Gemini:', error);
+                return false;
             }
-            return false;
         }
     );
 

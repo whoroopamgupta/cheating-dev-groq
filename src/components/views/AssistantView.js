@@ -1199,11 +1199,11 @@ export class AssistantView extends LitElement {
                 ${this.responses.length > 0
                 ? html`
                           <div class="follow-up-bubbles">
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Explain the previous answer in more depth with detailed reasoning and examples')}>💡 Explain Deeper</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a more optimized or efficient approach to the previous answer')}>⚡ Optimized Approach</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a practical code example or real-world example for the previous answer')}>🧪 With Example</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Summarize the key takeaways from the previous answer as short bullet points')}>🔑 Key Takeaways</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Compare alternative approaches or solutions and their trade-offs for the previous answer')}>🆚 Alternatives</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Explain the previous answer in more depth with detailed reasoning and examples. CRITICAL: If the topic is conceptual/technical, use natural conversational paragraphs ONLY. DO NOT use the Approach/Intuition/Code format unless the previous answer was explicitly a coding problem.')}>💡 Explain Deeper</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a more optimized or efficient approach to the previous answer. CRITICAL: Maintain a natural conversational format unless it is explicitly a coding problem.')}>⚡ Optimized Approach</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a practical code example or real-world example for the previous answer. Keep it concise.')}>🧪 With Example</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Summarize the key takeaways from the previous answer as short bullet points. Do NOT use the Approach/Intuition coding format.')}>🔑 Key Takeaways</button>
+                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Compare alternative approaches or solutions and their trade-offs for the previous answer. Keep it natural and conversational.')}>🆚 Alternatives</button>
                           </div>
                       `
                 : ''}

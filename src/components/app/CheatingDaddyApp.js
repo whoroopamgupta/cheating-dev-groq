@@ -952,7 +952,8 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             // Import prompts module to get system prompt
             // exam-groq uses its own dedicated prompts that emphasize accuracy + explanations
             const { getSystemPrompt } = window.require('./utils/prompts.js');
-            const systemPrompt = getSystemPrompt(this.selectedProfile, customPrompt, true);
+            const resumeContext = localStorage.getItem('resumeContext') || '';
+            const systemPrompt = getSystemPrompt(this.selectedProfile, customPrompt, true, resumeContext);
 
             await ipcRenderer.invoke('groq-set-llama-config', {
                 profile: this.selectedProfile,
