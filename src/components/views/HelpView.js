@@ -233,6 +233,15 @@ export class HelpView extends LitElement {
             color: var(--text-color);
             user-select: text;
         }
+
+        .version-info {
+            text-align: center;
+            padding: 24px 0 8px 0;
+            color: var(--description-color, rgba(255, 255, 255, 0.4));
+            font-size: 11px;
+            font-family: 'SF Mono', 'Monaco', monospace;
+            opacity: 0.6;
+        }
     `;
 
     static properties = {
@@ -305,6 +314,7 @@ export class HelpView extends LitElement {
                     </div>
                     <div class="community-links">
                         <div class="community-link" @click=${() => this.handleExternalLinkClick('https://cheatingdev.in')}>🌐 Official Website</div>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('mailto:support@interviewcracked.com')}>📧 Support: support@interviewcracked.com</div>
                     </div>
                 </div>
 
@@ -482,6 +492,8 @@ export class HelpView extends LitElement {
                         the AI generates a response based on the complete recorded question.<br /><br />
                     </div>
                 </div>
+
+                <div class="version-info">v1.2.7</div>
             </div>
         `;
     }

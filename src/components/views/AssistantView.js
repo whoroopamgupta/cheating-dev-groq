@@ -32,7 +32,7 @@ export class AssistantView extends LitElement {
 
         /* Restore default cursor for interactive elements */
         .response-container a {
-            cursor: pointer;
+            cursor: default;
         }
 
         /* Animated word-by-word reveal */
@@ -244,8 +244,8 @@ export class AssistantView extends LitElement {
         .response-container pre::before {
             content: attr(data-language);
             position: absolute;
-            top: 0.5em;
-            right: 0.8em;
+            top: 0.6em;
+            right: 3.5em;
             font-size: 0.7em;
             color: #858585;
             text-transform: uppercase;
@@ -254,6 +254,35 @@ export class AssistantView extends LitElement {
             background: rgba(0, 0, 0, 0.3);
             padding: 2px 6px;
             border-radius: 3px;
+        }
+
+        .code-copy-btn {
+            position: absolute;
+            top: 0.5em;
+            right: 0.8em;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #d4d4d4;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 14px;
+            cursor: default;
+            opacity: 0;
+            transition: opacity 0.2s ease, background 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            line-height: 1;
+        }
+
+        .response-container pre:hover .code-copy-btn {
+            opacity: 1;
+        }
+
+        .code-copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* Language-specific enhancements */
@@ -370,21 +399,24 @@ export class AssistantView extends LitElement {
         }
 
         .response-container::-webkit-scrollbar {
-            width: 8px;
+            width: 4px;
         }
 
         .response-container::-webkit-scrollbar-track {
-            background: var(--scrollbar-track);
-            border-radius: 4px;
+            background: transparent;
         }
 
         .response-container::-webkit-scrollbar-thumb {
-            background: var(--scrollbar-thumb);
+            background: transparent;
             border-radius: 4px;
         }
 
+        .response-container:hover::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         .response-container::-webkit-scrollbar-thumb:hover {
-            background: var(--scrollbar-thumb-hover);
+            background: rgba(255, 255, 255, 0.4);
         }
 
         .text-input-container {
@@ -473,7 +505,7 @@ export class AssistantView extends LitElement {
             width: 36px;
             height: 36px;
             justify-content: center;
-            cursor: pointer;
+            cursor: default;
         }
 
         .save-button:hover {
@@ -597,6 +629,41 @@ export class AssistantView extends LitElement {
             box-shadow: 0 0 8px rgba(139, 92, 246, 0.15);
         }
 
+        .follow-up-chip.chip-explain:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.15);
+        }
+
+        .follow-up-chip.chip-optimized:hover {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #fcd34d;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
+        }
+
+        .follow-up-chip.chip-example:hover {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+        }
+
+        .follow-up-chip.chip-takeaways:hover {
+            background: rgba(20, 184, 166, 0.15);
+            border-color: rgba(20, 184, 166, 0.4);
+            color: #5eead4;
+            box-shadow: 0 0 8px rgba(20, 184, 166, 0.15);
+        }
+
+        .follow-up-chip.chip-alternatives:hover {
+            background: rgba(236, 72, 153, 0.15);
+            border-color: rgba(236, 72, 153, 0.4);
+            color: #f9a8d4;
+            box-shadow: 0 0 8px rgba(236, 72, 153, 0.15);
+        }
+
         .follow-up-chip:active {
             transform: scale(0.96);
         }
@@ -632,7 +699,7 @@ export class AssistantView extends LitElement {
             color: #4ade80;
             padding: 8px 14px;
             border-radius: 8px;
-            cursor: pointer;
+            cursor: default;
             font-size: 12px;
             font-weight: 500;
             transition: all 0.2s ease;
@@ -880,6 +947,12 @@ export class AssistantView extends LitElement {
                 if (codeElement.classList.contains('hljs') || classList.some(cls => cls.startsWith('language-'))) {
                     pre.classList.add('hljs');
                 }
+
+                // Inject Copy Button
+                const copyBtn = doc.createElement('button');
+                copyBtn.className = 'code-copy-btn';
+                copyBtn.innerHTML = '📋';
+                pre.insertBefore(copyBtn, codeElement);
             }
         });
 
@@ -888,6 +961,25 @@ export class AssistantView extends LitElement {
 
     getResponseCounter() {
         return this.responses.length > 0 ? `${this.currentResponseIndex + 1}/${this.responses.length}` : '';
+    }
+
+    handleResponseClick(e) {
+        const copyBtn = e.target.closest('.code-copy-btn');
+        if (copyBtn) {
+            const pre = copyBtn.closest('pre');
+            const code = pre.querySelector('code');
+            if (code) {
+                navigator.clipboard.writeText(code.innerText)
+                    .then(() => {
+                        const originalHTML = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '✅';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalHTML;
+                        }, 2000);
+                    })
+                    .catch(err => console.error('Failed to copy code: ', err));
+            }
+        }
     }
 
     navigateToPreviousResponse() {
@@ -1193,17 +1285,17 @@ export class AssistantView extends LitElement {
         const responseCounter = this.getResponseCounter();
 
         return html`
-            <div class="response-container" id="responseContainer"></div>
+            <div class="response-container" id="responseContainer" @click=${this.handleResponseClick}></div>
 
             <div class="analyze-screen-container">
                 ${this.responses.length > 0
                 ? html`
                           <div class="follow-up-bubbles">
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Explain the previous answer in more depth with detailed reasoning and examples. CRITICAL: If the topic is conceptual/technical, use natural conversational paragraphs ONLY. DO NOT use the Approach/Intuition/Code format unless the previous answer was explicitly a coding problem.')}>💡 Explain Deeper</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a more optimized or efficient approach to the previous answer. CRITICAL: Maintain a natural conversational format unless it is explicitly a coding problem.')}>⚡ Optimized Approach</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Give a practical code example or real-world example for the previous answer. Keep it concise.')}>🧪 With Example</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Summarize the key takeaways from the previous answer as short bullet points. Do NOT use the Approach/Intuition coding format.')}>🔑 Key Takeaways</button>
-                              <button class="follow-up-chip" @click=${() => this.onFollowUpPrompt('Compare alternative approaches or solutions and their trade-offs for the previous answer. Keep it natural and conversational.')}>🆚 Alternatives</button>
+                              <button class="follow-up-chip chip-explain" @click=${() => this.onFollowUpPrompt('Explain the previous answer in more depth with detailed reasoning and examples. CRITICAL: If the topic is conceptual/technical, use natural conversational paragraphs ONLY. DO NOT use the Approach/Intuition/Code format unless the previous answer was explicitly a coding problem.')}>💡 Explain Deeper</button>
+                              <button class="follow-up-chip chip-optimized" @click=${() => this.onFollowUpPrompt('Give a more optimized or efficient approach to the previous answer. CRITICAL: Maintain a natural conversational format unless it is explicitly a coding problem.')}>⚡ Optimized Approach</button>
+                              <button class="follow-up-chip chip-example" @click=${() => this.onFollowUpPrompt('Give a practical code example or real-world example for the previous answer. Keep it concise.')}>🧪 With Example</button>
+                              <button class="follow-up-chip chip-takeaways" @click=${() => this.onFollowUpPrompt('Summarize the key takeaways from the previous answer as short bullet points. Do NOT use the Approach/Intuition coding format.')}>🔑 Key Takeaways</button>
+                              <button class="follow-up-chip chip-alternatives" @click=${() => this.onFollowUpPrompt('Compare alternative approaches or solutions and their trade-offs for the previous answer. Keep it natural and conversational.')}>🆚 Alternatives</button>
                           </div>
                       `
                 : ''}

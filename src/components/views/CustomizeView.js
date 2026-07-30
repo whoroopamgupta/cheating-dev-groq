@@ -57,6 +57,13 @@ export class CustomizeView extends LitElement {
             border-radius: 1.5px;
         }
 
+        .section-title.green::before { background: #34d399; }
+        .section-title.purple::before { background: #a855f7; }
+        .section-title.orange::before { background: #fb923c; }
+        .section-title.red::before { background: #ef4444; }
+        .section-title.teal::before { background: #2dd4bf; }
+        .section-title.pink::before { background: #ec4899; }
+
         .form-grid {
             display: grid;
             gap: 8px;
@@ -1260,12 +1267,12 @@ export class CustomizeView extends LitElement {
                                                   .options=${[
                         {
                             value: 'gpt-oss-120b',
-                            label: 'GPT OSS 120B (Accurate, Powerful)',
+                            label: 'GPT 120B Powerful (Accurate)',
                             icon: './assets/models/openai_logo.png',
                         },
                         {
                             value: 'gpt-oss-20b',
-                            label: 'GPT OSS 20B (Faster, Lightweight)',
+                            label: 'GPT 20B Lightweight (Faster)',
                             icon: './assets/models/openai_logo.png',
                         },
                     ]}
@@ -1273,8 +1280,8 @@ export class CustomizeView extends LitElement {
                                               ></custom-dropdown>
                                               <div class="form-description">
                                                   ${this.selectedGroqModel === 'gpt-oss-120b'
-                        ? 'GPT OSS 120B: 120B parameters MoE model. More accurate and detailed responses for complex questions.'
-                        : 'GPT OSS 20B: 20B parameters MoE model. Faster responses, ideal for quick interactions.'}
+                        ? 'GPT 120B: 120B parameters MoE model. More accurate and detailed responses for complex questions.'
+                        : 'GPT 20B: 20B parameters MoE model. Faster responses, ideal for quick interactions.'}
                                               </div>
                                           </div>
                                       </div>
@@ -1313,7 +1320,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Audio Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title teal">
                         <span>Audio</span>
                     </div>
                     <div class="form-grid">
@@ -1374,7 +1381,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Stealth Profile Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title green">
                         <span>Stealth Profile</span>
                     </div>
                     <div class="form-grid">
@@ -1406,7 +1413,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Language & Audio Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title pink">
                         <span>Language & Audio</span>
                     </div>
 
@@ -1430,7 +1437,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Interface Layout Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title purple">
                         <span>Interface Layout</span>
                     </div>
 
@@ -1516,7 +1523,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Screen Capture Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title orange">
                         <span>Screen Capture Settings</span>
                     </div>
 
@@ -1575,7 +1582,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Keyboard Shortcuts Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title teal">
                         <span>Keyboard Shortcuts</span>
                     </div>
 
@@ -1625,7 +1632,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Google Search Section -->
                 <div class="settings-section">
-                    <div class="section-title">
+                    <div class="section-title purple">
                         <span>Google Search</span>
                     </div>
 
@@ -1653,7 +1660,7 @@ export class CustomizeView extends LitElement {
 
                 <!-- Advanced Mode Section (Danger Zone) -->
                 <div class="settings-section" style="border-color: var(--danger-border, rgba(239, 68, 68, 0.3)); background: var(--danger-background, rgba(239, 68, 68, 0.05));">
-                    <div class="section-title" style="color: var(--danger-color, #ef4444);">
+                    <div class="section-title red" style="color: var(--danger-color, #ef4444);">
                         <span>⚠️ Advanced Mode</span>
                     </div>
 

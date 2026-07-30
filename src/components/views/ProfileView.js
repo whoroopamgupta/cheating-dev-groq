@@ -57,6 +57,13 @@ export class ProfileView extends LitElement {
             border-radius: 1.5px;
         }
 
+        .section-title.green::before { background: #34d399; }
+        .section-title.purple::before { background: #a855f7; }
+        .section-title.orange::before { background: #fb923c; }
+        .section-title.red::before { background: #ef4444; }
+        .section-title.teal::before { background: #2dd4bf; }
+        .section-title.pink::before { background: #ec4899; }
+
         .form-grid {
             display: grid;
             gap: 8px;
@@ -431,7 +438,7 @@ export class ProfileView extends LitElement {
             border-radius: 8px;
             padding: 24px;
             text-align: center;
-            cursor: pointer;
+            cursor: default;
             transition: all 0.2s ease;
             display: flex;
             flex-direction: column;
@@ -468,16 +475,61 @@ export class ProfileView extends LitElement {
             color: var(--description-color, rgba(255, 255, 255, 0.5));
         }
 
+        @keyframes drawCheck {
+            0% { stroke-dashoffset: 24; }
+            100% { stroke-dashoffset: 0; }
+        }
+
         .resume-status {
-            font-size: 11px;
-            margin-top: 6px;
+            font-size: 13px;
+            margin-top: 12px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        .resume-status.success { color: var(--success-color, #34d399); }
+        
+        .resume-status-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .resume-status.success { 
+            border-color: rgba(52, 211, 153, 0.4);
+            background: rgba(52, 211, 153, 0.1);
+            color: var(--success-color, #34d399); 
+        }
+
         .resume-status.error { color: var(--error-color, #ef4444); }
         .resume-status.loading { color: var(--warning-color, #fbbf24); }
+
+        .checkmark-icon {
+            width: 18px;
+            height: 18px;
+            stroke-dasharray: 24;
+            stroke-dashoffset: 24;
+            animation: drawCheck 0.4s ease-out forwards;
+        }
+
+        .remove-resume-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: default;
+            transition: all 0.2s ease;
+        }
+
+        .remove-resume-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
     `;
 
     static properties = {
@@ -487,6 +539,7 @@ export class ProfileView extends LitElement {
         isUploadingResume: { type: Boolean },
         resumeUploadError: { type: String },
         resumeUploadSuccess: { type: Boolean },
+        resumeFilename: { type: String },
     };
 
     constructor() {
@@ -496,6 +549,7 @@ export class ProfileView extends LitElement {
         this.isUploadingResume = false;
         this.resumeUploadError = '';
         this.resumeUploadSuccess = false;
+        this.resumeFilename = localStorage.getItem('resumeFilename') || '';
         this.onProfileChange = () => { };
     }
 
@@ -642,10 +696,10 @@ export class ProfileView extends LitElement {
 
         try {
             const { ipcRenderer } = window.require('electron');
-            
+
             // 1. Send file path to main process to extract raw text
             const extractResult = await ipcRenderer.invoke('process-resume', file.path);
-            
+
             if (!extractResult.success) {
                 throw new Error(extractResult.error || 'Failed to extract text from file');
             }
@@ -663,8 +717,10 @@ export class ProfileView extends LitElement {
 
             // 3. Save normalized context
             localStorage.setItem('resumeContext', normalizeResult.text);
+            localStorage.setItem('resumeFilename', file.name);
+            this.resumeFilename = file.name;
             this.resumeUploadSuccess = true;
-            
+
         } catch (err) {
             console.error('Resume upload error:', err);
             this.resumeUploadError = err.message || 'An error occurred during upload';
@@ -675,22 +731,42 @@ export class ProfileView extends LitElement {
         }
     }
 
+    handleRemoveResume() {
+        localStorage.removeItem('resumeContext');
+        localStorage.removeItem('resumeFilename');
+        this.resumeFilename = '';
+        this.resumeUploadSuccess = false;
+        this.requestUpdate();
+    }
+
     renderResumeStatus() {
         if (this.isUploadingResume) {
-            return html`<div class="resume-status loading">⏳ Processing via Groq AI... This may take a moment.</div>`;
+            return html`<div class="resume-status loading">
+                <div class="resume-status-left">⏳ Processing via AI... This may take a moment.</div>
+            </div>`;
         }
         if (this.resumeUploadError) {
-            return html`<div class="resume-status error">❌ ${this.resumeUploadError}</div>`;
+            return html`<div class="resume-status error">
+                <div class="resume-status-left">❌ ${this.resumeUploadError}</div>
+            </div>`;
         }
-        if (this.resumeUploadSuccess) {
-            return html`<div class="resume-status success">✅ Resume knowledge updated successfully!</div>`;
-        }
-        
+
         const existingContext = localStorage.getItem('resumeContext');
-        if (existingContext) {
-            return html`<div class="resume-status success">✅ Resume knowledge is active.</div>`;
+        if (this.resumeUploadSuccess || existingContext) {
+            return html`<div class="resume-status success">
+                <div class="resume-status-left">
+                    <svg class="checkmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-weight: 600; color: white;">${this.resumeFilename || 'Active Resume'}</span>
+                        <span style="font-size: 11px; opacity: 0.8;">Ready for use in conversations</span>
+                    </div>
+                </div>
+                <button class="remove-resume-btn" @click=${this.handleRemoveResume}>Remove</button>
+            </div>`;
         }
-        
+
         return html``;
     }
 
@@ -701,10 +777,10 @@ export class ProfileView extends LitElement {
 
         return html`
             <div class="settings-container">
-                <!-- Profile & Behavior Section -->
+                <!-- Profile Section -->
                 <div class="settings-section">
-                    <div class="section-title">
-                        <span>AI Profile & Behavior</span>
+                    <div class="section-title blue">
+                        <span>AI Profile</span>
                     </div>
 
                     <div class="form-grid">
@@ -721,7 +797,16 @@ export class ProfileView extends LitElement {
                                 ></custom-dropdown>
                             </div>
                         </div>
+                    </div>
+                </div>
 
+                <!-- Background & Customization Section -->
+                <div class="settings-section" style="margin-top: 16px;">
+                    <div class="section-title green">
+                        <span>Background & Customization</span>
+                    </div>
+
+                    <div class="form-grid">
                         <!-- Resume Upload Section -->
                         <div class="form-group full-width">
                             <label class="form-label">Background Knowledge (Resume)</label>

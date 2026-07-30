@@ -20,6 +20,139 @@ export class HistoryView extends LitElement {
             padding: 16px;
         }
 
+        .warning-banner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            color: #fca5a5;
+            font-size: 10px;
+            margin-bottom: 12px;
+        }
+
+        .warning-banner svg {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            width: 14px;
+            height: 14px;
+            color: var(--description-color, rgba(255, 255, 255, 0.6));
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 8px;
+            padding: 6px 10px 6px 30px;
+            color: var(--text-color, #e5e5e7);
+            font-size: 12px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--focus-border-color, #007aff);
+        }
+
+        .custom-select {
+            position: relative;
+            user-select: none;
+        }
+
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 8px;
+            padding: 6px 10px;
+            color: var(--text-color, #e5e5e7);
+            font-size: 12px;
+            cursor: default;
+            min-width: 120px;
+            transition: all 0.2s ease;
+        }
+
+        .custom-select-trigger:hover,
+        .custom-select.open .custom-select-trigger {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--focus-border-color, #007aff);
+        }
+
+        .custom-select-trigger svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            transition: transform 0.2s ease;
+        }
+
+        .custom-select.open .custom-select-trigger svg {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            background: #1e1e1e;
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 8px;
+            padding: 4px;
+            min-width: 160px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .custom-select-option {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--text-color, #e5e5e7);
+            cursor: default;
+            transition: background 0.2s ease;
+        }
+
+        .custom-select-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .custom-select-option.selected {
+            background: rgba(0, 122, 255, 0.2);
+            color: #60a5fa;
+        }
+
         .empty-state {
             display: flex;
             flex-direction: column;
@@ -58,11 +191,22 @@ export class HistoryView extends LitElement {
         .conversation-item {
             background: var(--input-background, rgba(0, 0, 0, 0.3));
             border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+            border-left: 4px solid var(--border-color, rgba(255, 255, 255, 0.2));
             border-radius: 8px;
             padding: 12px 16px;
-            cursor: pointer;
+            cursor: default;
             transition: all 0.2s ease;
         }
+
+        /* Profile specific borders */
+        .conversation-item.profile-interview { border-left-color: #10b981; }
+        .conversation-item.profile-product { border-left-color: #3b82f6; }
+        .conversation-item.profile-sales { border-left-color: #f59e0b; }
+        .conversation-item.profile-meeting { border-left-color: #8b5cf6; }
+        .conversation-item.profile-presentation { border-left-color: #ec4899; }
+        .conversation-item.profile-negotiation { border-left-color: #6366f1; }
+        .conversation-item.profile-exam,
+        .conversation-item.profile-exam-groq { border-left-color: #f97316; }
 
         .conversation-item:hover {
             background: var(--hover-background, rgba(255, 255, 255, 0.1));
@@ -111,7 +255,7 @@ export class HistoryView extends LitElement {
             background: none;
             border: none;
             padding: 4px;
-            cursor: pointer;
+            cursor: default;
             opacity: 0.5;
             transition: opacity 0.2s ease;
             color: var(--text-color, #e5e5e7);
@@ -146,7 +290,7 @@ export class HistoryView extends LitElement {
             background: none;
             border: none;
             padding: 8px;
-            cursor: pointer;
+            cursor: default;
             color: var(--text-color, #e5e5e7);
             opacity: 0.7;
             transition: opacity 0.2s ease;
@@ -172,6 +316,43 @@ export class HistoryView extends LitElement {
             font-size: 14px;
             font-weight: 600;
             color: var(--text-color, #e5e5e7);
+        }
+
+        .edit-title-btn {
+            background: none;
+            border: none;
+            color: var(--description-color, rgba(255, 255, 255, 0.6));
+            cursor: default;
+            padding: 4px;
+            opacity: 0.5;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .edit-title-btn:hover {
+            opacity: 1;
+            color: var(--text-color, #e5e5e7);
+        }
+
+        .edit-title-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .edit-title-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--focus-border-color, #007aff);
+            border-radius: 4px;
+            color: var(--text-color, #e5e5e7);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 2px 6px;
+            outline: none;
+            width: 100%;
+            max-width: 300px;
+            font-family: inherit;
         }
 
         .detail-title span {
@@ -200,7 +381,7 @@ export class HistoryView extends LitElement {
             border-radius: 10px;
             font-size: 13px;
             font-weight: 500;
-            cursor: pointer;
+            cursor: default;
             transition: all 0.2s ease;
             border: none;
         }
@@ -279,7 +460,7 @@ export class HistoryView extends LitElement {
             background: none;
             border: none;
             padding: 4px;
-            cursor: pointer;
+            cursor: default;
             color: var(--description-color, rgba(255, 255, 255, 0.5));
             transition: all 0.2s ease;
             display: flex;
@@ -375,7 +556,7 @@ export class HistoryView extends LitElement {
             gap: 12px;
             padding: 12px 16px;
             background: var(--input-background, rgba(0, 0, 0, 0.3));
-            cursor: pointer;
+            cursor: default;
             transition: background 0.2s ease;
         }
 
@@ -494,6 +675,11 @@ export class HistoryView extends LitElement {
         onExternalLinkClick: { type: Function },
         _isGeneratingSummary: { state: true },
         _showSummary: { state: true },
+        _searchQuery: { state: true },
+        _profileFilter: { state: true },
+        _isEditingTitle: { state: true },
+        _editTitleValue: { state: true },
+        _isFilterOpen: { state: true },
     };
 
     constructor() {
@@ -504,6 +690,11 @@ export class HistoryView extends LitElement {
         this.onExternalLinkClick = () => {};
         this._isGeneratingSummary = false;
         this._showSummary = false;
+        this._searchQuery = '';
+        this._profileFilter = 'all';
+        this._isEditingTitle = false;
+        this._editTitleValue = '';
+        this._isFilterOpen = false;
         this.loadConversations();
     }
 
@@ -566,6 +757,7 @@ export class HistoryView extends LitElement {
     }
 
     getPreviewText(conversation) {
+        if (conversation.title) return conversation.title;
         if (conversation.questions && conversation.questions.length > 0) {
             return conversation.questions[0].question || 'No question recorded';
         }
@@ -575,14 +767,60 @@ export class HistoryView extends LitElement {
     handleConversationClick(conversation) {
         this.selectedConversation = conversation;
         this.expandedItems = [];
+        this._isEditingTitle = false;
+        this._showSummary = false;
         this._showSummary = !!conversation.summary;
         this.requestUpdate();
     }
 
     handleBackToList() {
         this.selectedConversation = null;
-        this.expandedItems = [];
-        this._showSummary = false;
+        this._isEditingTitle = false;
+        this.requestUpdate();
+    }
+
+    startEditingTitle(e) {
+        e.stopPropagation();
+        this._isEditingTitle = true;
+        this._editTitleValue = this.selectedConversation.title || 
+                              (this.selectedConversation.questions?.length > 0 ? this.selectedConversation.questions[0].question : 'Conversation Details');
+        // Need to wait for render before focusing
+        setTimeout(() => {
+            const input = this.shadowRoot.querySelector('.edit-title-input');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 0);
+    }
+
+    handleTitleKeydown(e) {
+        if (e.key === 'Enter') {
+            this.saveTitle(e);
+        } else if (e.key === 'Escape') {
+            this._isEditingTitle = false;
+            this.requestUpdate();
+        }
+    }
+
+    saveTitle(e) {
+        if (!this._isEditingTitle) return;
+        
+        const newTitle = e.target.value.trim();
+        if (newTitle && newTitle !== this.selectedConversation.title) {
+            // Update the selected conversation
+            this.selectedConversation.title = newTitle;
+            
+            // Find and update in the main array to trigger reactivity and save
+            const index = this.conversations.findIndex(c => c.id === this.selectedConversation.id);
+            if (index !== -1) {
+                this.conversations[index].title = newTitle;
+                this.conversations = [...this.conversations];
+                this.saveConversations();
+            }
+        }
+        
+        this._isEditingTitle = false;
         this.requestUpdate();
     }
 
@@ -910,18 +1148,131 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
         `;
     }
 
+    getProfileIcon(profile) {
+        if (!profile) return '💬';
+        if (profile.includes('interview')) return '💼';
+        if (profile.includes('product')) return '🚀';
+        if (profile.includes('sales')) return '📈';
+        if (profile.includes('meeting')) return '🤝';
+        if (profile.includes('presentation')) return '📊';
+        if (profile.includes('negotiation')) return '⚖️';
+        if (profile.includes('exam')) return '📝';
+        return '💬';
+    }
+
+    handleSearchInput(e) {
+        this._searchQuery = e.target.value;
+    }
+
+    handleFilterChange(e) {
+        this._profileFilter = e.target.value;
+    }
+
+    toggleFilterDropdown(e) {
+        if (e) e.stopPropagation();
+        this._isFilterOpen = !this._isFilterOpen;
+    }
+
+    handleCustomFilterSelect(e, value) {
+        if (e) e.stopPropagation();
+        this._profileFilter = value;
+        this._isFilterOpen = false;
+    }
+
+    closeFilterDropdown() {
+        if (this._isFilterOpen) {
+            this._isFilterOpen = false;
+        }
+    }
+
+    getFilterLabel(val) {
+        const labels = {
+            'all': 'All Profiles',
+            'interview': 'Interview Mode',
+            'product': 'Product Based',
+            'sales': 'Sales',
+            'meeting': 'Meeting',
+            'presentation': 'Presentation',
+            'negotiation': 'Negotiation',
+            'exam': 'Exam Assistant',
+            'exam-groq': 'Exam (Groq)'
+        };
+        return labels[val] || 'All Profiles';
+    }
+
+    getFilteredConversations() {
+        return this.conversations.filter(conv => {
+            const matchesSearch = this._searchQuery === '' || 
+                (conv.summary || '').toLowerCase().includes(this._searchQuery.toLowerCase()) || 
+                this.getPreviewText(conv).toLowerCase().includes(this._searchQuery.toLowerCase());
+            const matchesProfile = this._profileFilter === 'all' || conv.profile === this._profileFilter || (!conv.profile && this._profileFilter === 'interview');
+            return matchesSearch && matchesProfile;
+        });
+    }
+
     renderConversationList() {
+        const filteredConversations = this.getFilteredConversations();
+
         return html`
-            <div class="history-container">
-                ${this.conversations.length === 0
-                    ? this.renderEmptyState()
+            <div class="history-container" @click=${this.closeFilterDropdown}>
+                <div class="warning-banner">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <span>Warning: Some steps of history deletion might be visible even on screen share.</span>
+                </div>
+                
+                ${this.conversations.length > 0 ? html`
+                <div class="filter-bar">
+                    <div class="search-input-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="M21 21l-4.35-4.35"></path>
+                        </svg>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Search in preview or summary..." 
+                            .value=${this._searchQuery}
+                            @input=${this.handleSearchInput}
+                        />
+                    </div>
+                    <div class="custom-select ${this._isFilterOpen ? 'open' : ''}" @click=${this.toggleFilterDropdown}>
+                        <div class="custom-select-trigger">
+                            <span>${this.getFilterLabel(this._profileFilter)}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        ${this._isFilterOpen ? html`
+                            <div class="custom-select-dropdown">
+                                <div class="custom-select-option ${this._profileFilter === 'all' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'all')}>All Profiles</div>
+                                <div class="custom-select-option ${this._profileFilter === 'interview' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'interview')}>Interview Mode</div>
+                                <div class="custom-select-option ${this._profileFilter === 'product' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'product')}>Product Based</div>
+                                <div class="custom-select-option ${this._profileFilter === 'sales' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'sales')}>Sales</div>
+                                <div class="custom-select-option ${this._profileFilter === 'meeting' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'meeting')}>Meeting</div>
+                                <div class="custom-select-option ${this._profileFilter === 'presentation' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'presentation')}>Presentation</div>
+                                <div class="custom-select-option ${this._profileFilter === 'negotiation' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'negotiation')}>Negotiation</div>
+                                <div class="custom-select-option ${this._profileFilter === 'exam' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'exam')}>Exam Assistant</div>
+                                <div class="custom-select-option ${this._profileFilter === 'exam-groq' ? 'selected' : ''}" @click=${(e) => this.handleCustomFilterSelect(e, 'exam-groq')}>Exam (Groq)</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${filteredConversations.length === 0
+                    ? (this.conversations.length === 0 ? this.renderEmptyState() : html`<div class="empty-state"><h3>No results found</h3><p>Try adjusting your search or filter.</p></div>`)
                     : html`
                           <div class="conversation-list">
-                              ${this.conversations.map(
+                              ${filteredConversations.map(
                                   conv => html`
-                                      <div class="conversation-item" @click=${() => this.handleConversationClick(conv)}>
+                                      <div class="conversation-item profile-${conv.profile || 'default'}" @click=${() => this.handleConversationClick(conv)}>
                                           <div class="conversation-header">
-                                              <span class="conversation-date">${this.formatDate(conv.timestamp)}</span>
+                                              <div style="display: flex; align-items: center; gap: 8px;">
+                                                  <span style="font-size: 14px;">${this.getProfileIcon(conv.profile)}</span>
+                                                  <span class="conversation-date">${this.formatDate(conv.timestamp)}</span>
+                                              </div>
                                               <button
                                                   class="delete-btn"
                                                   @click=${e => this.deleteConversation(e, conv.id)}
@@ -1087,7 +1438,25 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
                         </svg>
                     </button>
                     <div class="detail-title">
-                        <h3>Conversation Details</h3>
+                        ${this._isEditingTitle ? html`
+                            <input
+                                class="edit-title-input"
+                                type="text"
+                                .value=${this._editTitleValue}
+                                @keydown=${this.handleTitleKeydown}
+                                @blur=${this.saveTitle}
+                            />
+                        ` : html`
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                                <h3>${conv.title || (conv.questions?.length > 0 ? conv.questions[0].question : 'Conversation Details')}</h3>
+                                <button class="edit-title-btn" @click=${this.startEditingTitle} title="Edit title">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        `}
                         <span>${this.formatDate(conv.timestamp)} • ${conv.questions?.length || 0} questions</span>
                     </div>
                     <span class="read-only-badge">Read Only</span>

@@ -76,7 +76,7 @@ export class AppHeader extends LitElement {
             font-size: 10px;
             color: #ef4444;
             text-decoration: underline;
-            cursor: pointer;
+            cursor: default;
             opacity: 0.8;
             transition: opacity 0.2s ease;
             margin-top: 4px;
@@ -108,6 +108,33 @@ export class AppHeader extends LitElement {
             gap: var(--header-gap);
             align-items: center;
             -webkit-app-region: no-drag;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-color, #fff);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
+        }
+
+        .status-spinner {
+            width: 10px;
+            height: 10px;
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--text-color, #fff);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         .header-actions span {
@@ -177,7 +204,7 @@ export class AppHeader extends LitElement {
             gap: 4px;
             font-size: 12px;
             font-weight: 500;
-            cursor: pointer;
+            cursor: default;
             transition: all 0.2s ease;
         }
 
@@ -391,8 +418,8 @@ export class AppHeader extends LitElement {
 
         // Format model names for display
         const modelMap = {
-            'gpt-oss-120b': 'GPT OSS 120B',
-            'gpt-oss-20b': 'GPT OSS 20B',
+            'gpt-oss-120b': 'GPT 120B',
+            'gpt-oss-20b': 'GPT 20B',
             'gemini-live-2.5-flash-preview': '2.5 Flash Live',
             'gemini-2.5-flash-native-audio-preview-09-2025': '2.5 Flash Live',
             'gemini-2.5-flash': '2.5 Flash',
@@ -455,10 +482,25 @@ export class AppHeader extends LitElement {
                 : ''}
                     ${this.currentView === 'assistant'
                 ? html`
-                              <span>
-                                  ${elapsedTime ? `Session: ${elapsedTime}` : ''}
-                                  ${elapsedTime && this.statusText && !this.statusText.includes('Rate limited') ? ' · ' : ''}
-                                  ${this.statusText && !this.statusText.includes('Rate limited') ? this.statusText : ''}
+                              <span style="display: flex; align-items: center; gap: 4px;">
+                                  ${elapsedTime ? html`
+                                      <svg style="width: 14px; height: 14px; opacity: 0.7;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                          <circle cx="12" cy="12" r="9"></circle>
+                                          <path d="M12 7v5l2.5 2.5"></path>
+                                      </svg>
+                                      Session: ${elapsedTime}
+                                  ` : ''}
+                                  ${elapsedTime && this.statusText && !this.statusText.includes('Rate limited') ? html`<span style="opacity: 0.5;">·</span>` : ''}
+                                  ${this.statusText && !this.statusText.includes('Rate limited')
+                                      ? this.statusText.endsWith('...')
+                                          ? html`
+                                              <span class="status-pill">
+                                                  <div class="status-spinner"></div>
+                                                  ${this.statusText}
+                                              </span>
+                                            `
+                                          : html`<span style="opacity: 0.8;">${this.statusText}</span>`
+                                      : ''}
                               </span>
                           `
                 : ''}
@@ -483,29 +525,6 @@ export class AppHeader extends LitElement {
                                           stroke-linejoin="round"
                                       ></path>
                                   </svg>
-                              </button>
-                          `
-                : this.isNavigationView()
-                ? html`
-                              <button @click=${this.onBackClick} class="back-button">
-                                  <svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
-                                  >
-                                      <path
-                                          d="M15 6L9 12L15 18"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                                  Home
                               </button>
                           `
                 : html`

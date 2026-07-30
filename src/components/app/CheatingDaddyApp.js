@@ -69,7 +69,7 @@ export class CheatingDaddyApp extends LitElement {
             justify-content: center;
             gap: 4px;
             transition: all 0.2s ease;
-            cursor: pointer;
+            cursor: default;
         }
 
         .sidebar-icon-button svg {
@@ -98,12 +98,14 @@ export class CheatingDaddyApp extends LitElement {
             transition: transform 0.2s ease;
         }
 
-        .sidebar-icon-button:hover {
+        .sidebar-icon-button:hover,
+        .sidebar-icon-button.active {
             background: rgba(255, 255, 255, 0.08);
             color: var(--text-color, #e5e5e7);
         }
 
-        .sidebar-icon-button:hover::before {
+        .sidebar-icon-button:hover::before,
+        .sidebar-icon-button.active::before {
             transform: translateY(-50%) scaleY(1);
         }
 
@@ -232,7 +234,7 @@ export class CheatingDaddyApp extends LitElement {
             border-radius: 10px;
             font-size: 13px;
             font-weight: 500;
-            cursor: pointer;
+            cursor: default;
             transition: all 0.2s ease;
             border: none;
         }
@@ -308,6 +310,43 @@ export class CheatingDaddyApp extends LitElement {
             height: 1px;
             background: rgba(255, 255, 255, 0.1);
         }
+
+        /* Stealth Toast Notification */
+        .toast-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .toast-pill {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.95);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: toast-animation 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes toast-animation {
+            0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+            10% { opacity: 1; transform: translateY(0) scale(1); }
+            80% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(10px) scale(0.95); }
+        }
     `;
 
     static properties = {
@@ -337,6 +376,9 @@ export class CheatingDaddyApp extends LitElement {
         logoutMessage: { type: String },
         // Close session modal
         _showCloseModal: { state: true },
+        // Global toast notification
+        toastMessage: { type: String },
+        showToastFlag: { type: Boolean },
     };
 
     constructor() {
@@ -405,6 +447,10 @@ export class CheatingDaddyApp extends LitElement {
 
         // Validation interval reference (will be set in connectedCallback)
         this._validationIntervalId = null;
+
+        this.toastMessage = '';
+        this.showToastFlag = false;
+        this.toastTimeout = null;
     }
 
     connectedCallback() {
@@ -421,6 +467,7 @@ export class CheatingDaddyApp extends LitElement {
             });
             ipcRenderer.on('click-through-toggled', (_, isEnabled) => {
                 this._isClickThrough = isEnabled;
+                this.showToast(isEnabled ? 'Click-through enabled' : 'Click-through disabled');
             });
             // Rate limit event listener
             ipcRenderer.on('rate-limit-hit', (_, data) => {
@@ -448,6 +495,29 @@ export class CheatingDaddyApp extends LitElement {
                 this.validateUserInBackground();
             }
         }, 30 * 1000); // 30 seconds
+
+        window.addEventListener('show-toast', (e) => this.showToast(e.detail));
+    }
+
+    showToast(message) {
+        if (this.toastTimeout) {
+            clearTimeout(this.toastTimeout);
+            this.showToastFlag = false;
+        }
+        
+        // Force DOM update before showing new toast to restart animation
+        this.requestUpdate();
+        setTimeout(() => {
+            this.toastMessage = message;
+            this.showToastFlag = true;
+            this.requestUpdate();
+            
+            this.toastTimeout = setTimeout(() => {
+                this.showToastFlag = false;
+                this.requestUpdate();
+                this.toastTimeout = null;
+            }, 2600);
+        }, 10);
     }
 
     disconnectedCallback() {
@@ -1394,14 +1464,24 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
         // Hide header on login view
         const showHeader = this.currentView !== 'login';
+        
+        // Show sidebar on all navigational views
+        const showSidebar = ['main', 'customize', 'profile', 'help', 'history', 'advanced'].includes(this.currentView);
 
         return html`
             <div class="window-container">
-                ${this.currentView === 'main' ? html`
+                ${showSidebar ? html`
                 <div class="sidebar">
+                    <button class="sidebar-icon-button ${this.currentView === 'main' ? 'active' : ''}" @click=${() => this.handleBackClick()}>
+                        <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <span>Home</span>
+                    </button>
                     ${this.advancedMode
                         ? html`
-                                        <button class="sidebar-icon-button" @click=${() => this.handleAdvancedClick()}>
+                                        <button class="sidebar-icon-button ${this.currentView === 'advanced' ? 'active' : ''}" @click=${() => this.handleAdvancedClick()}>
                                             <?xml version="1.0" encoding="UTF-8"?><svg
                                                 width="24px"
                                                 stroke-width="1.7"
@@ -1445,11 +1525,11 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                         </button>
                                     `
                         : ''}
-                              <button class="sidebar-icon-button" @click=${() => this.handleProfileViewClick()}>
+                              <button class="sidebar-icon-button ${this.currentView === 'profile' ? 'active' : ''}" @click=${() => this.handleProfileViewClick()}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg width="24px" height="24px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="currentColor"/></svg>
                                   <span>Profile</span>
                               </button>
-                              <button class="sidebar-icon-button" @click=${() => this.handleCustomizeClick()}>
+                              <button class="sidebar-icon-button ${this.currentView === 'customize' ? 'active' : ''}" @click=${() => this.handleCustomizeClick()}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
                                       height="24px"
@@ -1476,7 +1556,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                   </svg>
                                   <span>Customize</span>
                               </button>
-                              <button class="sidebar-icon-button" @click=${() => this.handleHelpClick()}>
+                              <button class="sidebar-icon-button ${this.currentView === 'help' ? 'active' : ''}" @click=${() => this.handleHelpClick()}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
                                       height="24px"
@@ -1510,7 +1590,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                   </svg>
                                   <span>Help</span>
                               </button>
-                              <button class="sidebar-icon-button" @click=${() => this.handleHistoryClick()}>
+                              <button class="sidebar-icon-button ${this.currentView === 'history' ? 'active' : ''}" @click=${() => this.handleHistoryClick()}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
                                       height="24px"
@@ -1610,6 +1690,15 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                   </button>
                                   <button class="modal-btn modal-btn-cancel" @click=${this.handleCloseModalCancel}>← Continue Current Session</button>
                               </div>
+                          </div>
+                      </div>
+                  `
+                : ''}
+            ${this.showToastFlag
+                ? html`
+                      <div class="toast-container">
+                          <div class="toast-pill">
+                              ${this.toastMessage}
                           </div>
                       </div>
                   `

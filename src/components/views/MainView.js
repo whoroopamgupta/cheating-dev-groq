@@ -9,11 +9,49 @@ export class MainView extends LitElement {
             user-select: none;
         }
 
+        .welcome-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            margin-top: auto;
+        }
+
+        .welcome-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+        .welcome-text-container {
+            position: relative;
+        }
+
+        .welcome-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 130%;
+            height: 150%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+            filter: blur(8px);
+            z-index: 0;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
         .welcome {
             font-size: 24px;
-            margin-bottom: 8px;
             font-weight: 600;
-            margin-top: auto;
+            position: relative;
+            z-index: 1;
+            margin: 0;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.05); }
         }
 
         .input-group {
@@ -71,23 +109,48 @@ export class MainView extends LitElement {
             }
         }
 
+        @keyframes pulse-button {
+            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+        }
+
         .start-button {
-            background: var(--start-button-background);
-            color: var(--start-button-color, black);
-            border: 1px solid var(--start-button-border);
-            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 18px;
             border-radius: 8px;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             white-space: nowrap;
             display: flex;
             align-items: center;
             gap: 6px;
+            animation: pulse-button 2.5s infinite;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+        }
+
+        .start-button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .start-button:hover::before {
+            left: 100%;
         }
 
         .start-button:hover {
-            background: var(--start-button-hover-background);
-            border-color: var(--start-button-hover-border);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(59, 130, 246, 1));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         .start-button.initializing {
@@ -410,6 +473,8 @@ export class MainView extends LitElement {
     }
 
     render() {
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        
         // Determine profile label based on selected profile
         let profileLabel;
         if (this.isExamMode()) {
@@ -424,7 +489,13 @@ export class MainView extends LitElement {
         const apiType = this.isExamMode() ? 'Gemini' : 'Groq';
 
         return html`
-            <div class="welcome">Welcome</div>
+            <div class="welcome-container">
+                <img src="assets/logo.png" class="welcome-logo" alt="Logo" />
+                <div class="welcome-text-container">
+                    <div class="welcome-glow"></div>
+                    <div class="welcome">Welcome</div>
+                </div>
+            </div>
             <p class="description" style="margin-bottom: 12px; font-size: 12px; opacity: 0.7;">
                 Mode: <strong>${profileLabel}</strong> (using ${apiType} API)
             </p>
@@ -442,10 +513,10 @@ export class MainView extends LitElement {
                 </button>
             </div>
             <p class="description">
-                dont have an api key?
+                Don't have an API key?
                 <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span>
             </p>
-            <p class="shortcut-hint">Press <strong>Ctrl+Alt+R</strong> to clear session and automatically restart</p>
+            <p class="shortcut-hint">Press <strong>${isMac ? '⌘+⌥+R' : 'Ctrl+Alt+R'}</strong> to clear session and automatically restart</p>
 
             <div class="footer-actions">
                 <span class="user-email">Signed in as <strong>${this.getLoggedInEmail()}</strong></span>
