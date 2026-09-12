@@ -509,7 +509,8 @@ const GROQ_MODELS = {
 
 // Vision model for screenshot analysis (only vision-capable model on Groq)
 // Note: llama-4-scout-17b was deprecated June 17, 2026 — replaced with Qwen3.6 27B
-const VISION_MODEL = 'qwen/qwen3.6-27b';
+// Note: qwen3.6-27b deprecated Sept 2026 — replaced with Qwen3.8 27B
+const VISION_MODEL = 'qwen/qwen3.8-27b';
 
 // Default to GPT OSS 120B for text generation
 let currentLlamaModel = GROQ_MODELS['gpt-oss-120b'];
@@ -689,15 +690,15 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             stream: true, // Enable streaming for faster perceived response
         };
 
-        // Groq reasoning models (Qwen 3.6-27b and GPT OSS series) output thinking tokens.
+        // Groq reasoning models (Qwen 3.8-27b and GPT OSS series) output thinking tokens.
         // We set reasoning_format to 'hidden' to prevent these from streaming to the UI.
-        if (modelToUse === 'qwen/qwen3.6-27b' || modelToUse.includes('gpt-oss-')) {
+        if (modelToUse === 'qwen/qwen3.8-27b' || modelToUse.includes('gpt-oss-')) {
             payload.reasoning_format = 'hidden';
         }
 
         // Disable reasoning for the vision model to achieve instant responses (~300ms)
         // and prevent rate-limit queue stacking during auto-capture.
-        if (modelToUse === 'qwen/qwen3.6-27b') {
+        if (modelToUse === 'qwen/qwen3.8-27b') {
             payload.reasoning_effort = 'none';
         }
 

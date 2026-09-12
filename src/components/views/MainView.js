@@ -50,8 +50,15 @@ export class MainView extends LitElement {
         }
 
         @keyframes pulse-glow {
-            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.05); }
+            0%,
+            100% {
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+                opacity: 0.9;
+                transform: translate(-50%, -50%) scale(1.05);
+            }
         }
 
         .input-group {
@@ -110,9 +117,15 @@ export class MainView extends LitElement {
         }
 
         @keyframes pulse-button {
-            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+            }
         }
 
         .start-button {
@@ -137,7 +150,10 @@ export class MainView extends LitElement {
         .start-button::before {
             content: '';
             position: absolute;
-            top: 0; left: -100%; width: 50%; height: 100%;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
             transition: left 0.6s ease;
         }
@@ -346,6 +362,11 @@ export class MainView extends LitElement {
 
     // Get the current API key based on profile
     getCurrentApiKey() {
+        const user = this.getLoggedInUser();
+        if (user && user.api_key_included && user.api_key) {
+            return user.api_key;
+        }
+
         if (this.isExamMode()) {
             return localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey') || '';
         } else {
@@ -396,17 +417,21 @@ export class MainView extends LitElement {
         this.onLogout();
     }
 
-    getLoggedInEmail() {
+    getLoggedInUser() {
         try {
             const userInfo = localStorage.getItem('loggedInUser');
             if (userInfo) {
-                const user = JSON.parse(userInfo);
-                return user.email || '';
+                return JSON.parse(userInfo);
             }
         } catch (e) {
             console.error('Error getting logged in user:', e);
         }
-        return '';
+        return null;
+    }
+
+    getLoggedInEmail() {
+        const user = this.getLoggedInUser();
+        return user ? user.email || '' : '';
     }
 
     loadLayoutMode() {
@@ -474,7 +499,9 @@ export class MainView extends LitElement {
 
     render() {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-        
+        const user = this.getLoggedInUser();
+        const apiKeyIncluded = user && user.api_key_included;
+
         // Determine profile label based on selected profile
         let profileLabel;
         if (this.isExamMode()) {
@@ -503,19 +530,26 @@ export class MainView extends LitElement {
             <div class="input-group">
                 <input
                     type="password"
-                    placeholder="${this.getApiKeyPlaceholder()}"
+                    placeholder="${apiKeyIncluded ? 'API Key included in plan' : this.getApiKeyPlaceholder()}"
                     .value=${this.getCurrentApiKey()}
                     @input=${this.handleInput}
                     class="${this.showApiKeyError ? 'api-key-error' : ''}"
+                    ?disabled=${apiKeyIncluded}
                 />
                 <button @click=${this.handleStartClick} class="start-button ${this.isInitializing ? 'initializing' : ''}">
                     ${this.getStartButtonText()}
                 </button>
             </div>
-            <p class="description">
-                Don't have an API key?
-                <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span>
-            </p>
+            ${
+                !apiKeyIncluded
+                    ? html`
+                          <p class="description">
+                              Don't have an API key?
+                              <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span>
+                          </p>
+                      `
+                    : ''
+            }
             <p class="shortcut-hint">Press <strong>${isMac ? '⌘+⌥+R' : 'Ctrl+Alt+R'}</strong> to clear session and automatically restart</p>
 
             <div class="footer-actions">

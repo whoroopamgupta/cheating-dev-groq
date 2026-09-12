@@ -305,9 +305,31 @@ export class HelpView extends LitElement {
     render() {
         const isMacOS = cheddar.isMacOS || false;
         const isLinux = cheddar.isLinux || false;
+        
+        let planDetails = "Unknown";
+        try {
+            const loggedInUserStr = localStorage.getItem('loggedInUser');
+            if (loggedInUserStr) {
+                const user = JSON.parse(loggedInUserStr);
+                if (user && user.expiry_date) {
+                    planDetails = `Valid until ${user.expiry_date}`;
+                }
+            }
+        } catch(e) {
+            console.error('Failed to parse user for help view', e);
+        }
 
         return html`
             <div class="help-container">
+                <div class="option-group">
+                    <div class="option-label">
+                        <span>Account Plan</span>
+                    </div>
+                    <div class="description" style="font-size: 13px; font-weight: 500; color: var(--accent-color, #007aff);">
+                        ${planDetails}
+                    </div>
+                </div>
+
                 <div class="option-group">
                     <div class="option-label">
                         <span>Community & Support</span>

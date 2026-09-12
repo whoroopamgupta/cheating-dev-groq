@@ -1,4 +1,5 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
+import { isPlanExpired } from '../../utils/dateUtils.js';
 
 export class LoginView extends LitElement {
     static styles = css`
@@ -203,7 +204,7 @@ export class LoginView extends LitElement {
             justify-content: center;
             padding: 4px;
         }
-        
+
         .password-toggle:hover {
             color: var(--text-color, rgba(255, 255, 255, 0.9));
         }
@@ -437,60 +438,76 @@ export class LoginView extends LitElement {
         this.showError = false;
 
         try {
-            // Fetch credentials from remote JSON
-            const response = await fetch('https://raw.githubusercontent.com/catwithbatman-del/codeindev-emails/refs/heads/main/emails.json');
+            const response = await fetch('https://www.interviewcracked.com/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: this.email.toLowerCase().trim(),
+                    password: this.password,
+                }),
+            });
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch authentication data');
-            }
-
-            const text = await response.text();
-
-            // Parse the JSON (handle non-standard JSON with unquoted keys and trailing commas)
-            let users;
-            try {
-                // Try standard JSON parse first
-                users = JSON.parse(text);
-            } catch (parseError) {
-                // If that fails, try to fix the JSON format
-                let fixedJson = text
-                    // Add quotes around unquoted keys
-                    .replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3')
-                    // Replace "null" string with null
-                    .replace(/:\s*"null"/g, ': null')
-                    // Remove trailing commas before ] or }
-                    .replace(/,(\s*[\]}])/g, '$1');
-                users = JSON.parse(fixedJson);
-            }
-
-            // Find matching user
-            const user = users.find(u => u.userEmail.toLowerCase() === this.email.toLowerCase().trim() && u.userPassword === this.password);
-
-            if (user) {
-                // Login successful
-                console.log('[Login] Success for user:', user.user);
-
-                // Store login info in localStorage
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem(
-                    'loggedInUser',
-                    JSON.stringify({
-                        name: user.user,
-                        email: user.userEmail,
-                        plan: user.usePlan,
-                        device: user.device,
-                        startDate: user.startDate,
-                        trialEndDate: user.trialEndDate,
-                    })
-                );
-
-                // Call success callback
-                this.onLoginSuccess(user);
-            } else {
-                // Login failed
+            if (response.status === 401) {
                 this.errorMessage = 'Invalid email or password';
                 this.showError = true;
+                return;
             }
+
+            const data = await response.json();
+
+            if (response.status === 403) {
+                this.errorMessage = data.error || 'Your subscription has expired. Please renew your plan.';
+                this.showError = true;
+                return;
+            }
+
+            if (!response.ok) {
+                this.errorMessage = data.error || 'An error occurred during login.';
+                this.showError = true;
+                return;
+            }
+
+            let user = data.user;
+
+            // Fetch the freshest data from Supabase directly via RPC (bypasses RLS & cache)
+            try {
+                const supaUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/get_expiry_date';
+                const supaResponse = await fetch(supaUrl, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                        'Authorization': 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_email: user.email })
+                });
+                const supaData = await supaResponse.json();
+                
+                if (supaData && typeof supaData === 'string') {
+                    user.expiry_date = supaData;
+                }
+            } catch (e) {
+                console.error('[Auth] Failed to fetch fresh data from Supabase RPC', e);
+            }
+
+            // Enforce expiry date (IST) client-side as a fallback
+            if (isPlanExpired(user.expiry_date)) {
+                this.errorMessage = 'Your subscription has expired. Please renew your plan.';
+                this.showError = true;
+                return;
+            }
+
+            // Login successful
+            console.log('[Login] Success for user:', user.name);
+
+            // Store login info in localStorage
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('loggedInUser', JSON.stringify(user));
+
+            // Call success callback
+            this.onLoginSuccess(user);
         } catch (error) {
             console.error('[Login] Error:', error);
             this.errorMessage = 'Unable to connect. Please check your internet connection.';
@@ -564,45 +581,49 @@ export class LoginView extends LitElement {
                             <div class="logo-subtitle">Enter your credentials to continue</div>
                         </div>
 
-                        ${this.logoutMessage
-                            ? html`
-                                  <div class="logout-message">
-                                      <button class="logout-message-close" @click=${this.handleDismissLogoutMessage} title="Dismiss">
-                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                              <line x1="18" y1="6" x2="6" y2="18"></line>
-                                              <line x1="6" y1="6" x2="18" y2="18"></line>
-                                          </svg>
-                                      </button>
-                                      <div class="logout-message-header">
-                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                              <path
-                                                  d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
-                                              ></path>
-                                              <line x1="12" y1="9" x2="12" y2="13"></line>
-                                              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                                          </svg>
-                                          <span>Plan Expired</span>
+                        ${
+                            this.logoutMessage
+                                ? html`
+                                      <div class="logout-message">
+                                          <button class="logout-message-close" @click=${this.handleDismissLogoutMessage} title="Dismiss">
+                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                              </svg>
+                                          </button>
+                                          <div class="logout-message-header">
+                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                  <path
+                                                      d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                                                  ></path>
+                                                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                                                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                              </svg>
+                                              <span>Plan Expired</span>
+                                          </div>
+                                          <div class="logout-message-content">
+                                              Your plan has ended. If this is a mistake, please contact
+                                              <a @click=${() => this.copyEmail('webdevarmyhq@gmail.com')}>webdevarmyhq@gmail.com</a>. To extend your
+                                              plan, <a @click=${this.handleGetAccess}>visit our website</a>.
+                                          </div>
                                       </div>
-                                      <div class="logout-message-content">
-                                          Your plan has ended. If this is a mistake, please contact
-                                          <a @click=${() => this.copyEmail('webdevarmyhq@gmail.com')}>webdevarmyhq@gmail.com</a>. To extend your plan,
-                                          <a @click=${this.handleGetAccess}>visit our website</a>.
+                                  `
+                                : ''
+                        }
+                        ${
+                            this.showError
+                                ? html`
+                                      <div class="error-message">
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                              <circle cx="12" cy="12" r="10"></circle>
+                                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                          </svg>
+                                          <span>${this.errorMessage}</span>
                                       </div>
-                                  </div>
-                              `
-                            : ''}
-                        ${this.showError
-                            ? html`
-                                  <div class="error-message">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                          <circle cx="12" cy="12" r="10"></circle>
-                                          <line x1="12" y1="8" x2="12" y2="12"></line>
-                                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                      </svg>
-                                      <span>${this.errorMessage}</span>
-                                  </div>
-                              `
-                            : ''}
+                                  `
+                                : ''
+                        }
 
                         <div class="form-group">
                             <label class="form-label">Email Address</label>
@@ -631,17 +652,41 @@ export class LoginView extends LitElement {
                                     style="padding-right: 40px;"
                                 />
                                 <button class="password-toggle" @click=${this.togglePasswordVisibility} type="button" tabindex="-1">
-                                    ${this.showPassword ? html`
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                            <line x1="1" y1="1" x2="23" y2="23"></line>
-                                        </svg>
-                                    ` : html`
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    `}
+                                    ${
+                                        this.showPassword
+                                            ? html`
+                                                  <svg
+                                                      width="18"
+                                                      height="18"
+                                                      viewBox="0 0 24 24"
+                                                      fill="none"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                  >
+                                                      <path
+                                                          d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                                                      ></path>
+                                                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                                                  </svg>
+                                              `
+                                            : html`
+                                                  <svg
+                                                      width="18"
+                                                      height="18"
+                                                      viewBox="0 0 24 24"
+                                                      fill="none"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                  >
+                                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                      <circle cx="12" cy="12" r="3"></circle>
+                                                  </svg>
+                                              `
+                                    }
                                 </button>
                             </div>
                         </div>

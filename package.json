@@ -27,6 +27,7 @@
     "dependencies": {
         "@google/genai": "^1.2.0",
         "@ricky0123/vad-node": "^0.0.3",
+        "@supabase/supabase-js": "^2.116.0",
         "electron-squirrel-startup": "^1.0.1",
         "mammoth": "^1.12.0",
         "pdf-parse": "^1.1.1"

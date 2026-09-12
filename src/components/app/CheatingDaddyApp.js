@@ -1,4 +1,5 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
+import { isPlanExpired } from '../../utils/dateUtils.js';
 import { AppHeader } from './AppHeader.js';
 import { MainView } from '../views/MainView.js';
 import { CustomizeView } from '../views/CustomizeView.js';
@@ -342,10 +343,22 @@ export class CheatingDaddyApp extends LitElement {
         }
 
         @keyframes toast-animation {
-            0% { opacity: 0; transform: translateY(20px) scale(0.95); }
-            10% { opacity: 1; transform: translateY(0) scale(1); }
-            80% { opacity: 1; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(10px) scale(0.95); }
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            80% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
         }
     `;
 
@@ -385,7 +398,25 @@ export class CheatingDaddyApp extends LitElement {
         super();
 
         // Check if user is logged in first
-        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+        if (isLoggedIn) {
+            const loggedInUserStr = localStorage.getItem('loggedInUser');
+            if (loggedInUserStr) {
+                try {
+                    const loggedInUser = JSON.parse(loggedInUserStr);
+                    if (isPlanExpired(loggedInUser.expiry_date)) {
+                        console.log('[Auth] User plan expired on boot, logging out');
+                        localStorage.removeItem('isLoggedIn');
+                        localStorage.removeItem('loggedInUser');
+                        isLoggedIn = false;
+                        this.logoutMessage = 'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
+                    }
+                } catch (e) {
+                    console.error('[Auth] Error parsing user data on boot:', e);
+                }
+            }
+        }
 
         if (!isLoggedIn) {
             // Not logged in - show login view
@@ -488,15 +519,12 @@ export class CheatingDaddyApp extends LitElement {
         this.boundKeydownHandler = this.handleGlobalKeydown.bind(this);
         document.addEventListener('keydown', this.boundKeydownHandler);
 
-        // Set up periodic background validation (every 30 seconds)
-        // This ensures users are logged out promptly if their plan expires while app is running
-        this._validationIntervalId = setInterval(() => {
-            if (this.currentView !== 'login') {
-                this.validateUserInBackground();
-            }
-        }, 30 * 1000); // 30 seconds
+        // Check for expiry on boot directly from Supabase
+        if (this.currentView !== 'login') {
+            this.validateUserInBackground();
+        }
 
-        window.addEventListener('show-toast', (e) => this.showToast(e.detail));
+        window.addEventListener('show-toast', e => this.showToast(e.detail));
     }
 
     showToast(message) {
@@ -504,14 +532,14 @@ export class CheatingDaddyApp extends LitElement {
             clearTimeout(this.toastTimeout);
             this.showToastFlag = false;
         }
-        
+
         // Force DOM update before showing new toast to restart animation
         this.requestUpdate();
         setTimeout(() => {
             this.toastMessage = message;
             this.showToastFlag = true;
             this.requestUpdate();
-            
+
             this.toastTimeout = setTimeout(() => {
                 this.showToastFlag = false;
                 this.requestUpdate();
@@ -1223,7 +1251,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
     // Login event handlers
     handleLoginSuccess(user) {
-        console.log('[CheatingDaddyApp] Login successful for:', user.user);
+        console.log('[CheatingDaddyApp] Login successful for:', user.name);
         // Check if onboarding is completed
         if (localStorage.getItem('onboardingCompleted')) {
             this.currentView = 'main';
@@ -1243,73 +1271,47 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         this.requestUpdate();
     }
 
-    // Background validation of user account
+    // Background validation of user account (checks expiry with Supabase directly)
     async validateUserInBackground() {
         try {
             const loggedInUserStr = localStorage.getItem('loggedInUser');
-            if (!loggedInUserStr) {
-                console.log('[Auth] No logged in user found, skipping validation');
-                return;
+            if (!loggedInUserStr) return;
+
+            let loggedInUser = JSON.parse(loggedInUserStr);
+
+            // Fetch the freshest data from Supabase directly via RPC (bypasses RLS)
+            const supaUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/get_expiry_date';
+            const supaResponse = await fetch(supaUrl, {
+                method: 'POST',
+                headers: {
+                    'apikey': 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                    'Authorization': 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_email: loggedInUser.email })
+            });
+            const supaData = await supaResponse.json();
+
+            if (supaData && typeof supaData === 'string') {
+                loggedInUser.expiry_date = supaData;
+                // Update local storage so other views have the fresh date
+                localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
             }
 
-            const loggedInUser = JSON.parse(loggedInUserStr);
-            const userEmail = loggedInUser.email;
-
-            if (!userEmail) {
-                console.log('[Auth] No email found for logged in user, skipping validation');
-                return;
-            }
-
-            console.log('[Auth] Validating user in background:', userEmail);
-
-            // Fetch the current user list from remote
-            const response = await fetch('https://raw.githubusercontent.com/catwithbatman-del/codeindev-emails/refs/heads/main/emails.json');
-
-            if (!response.ok) {
-                console.warn('[Auth] Failed to fetch user list for validation, allowing user to continue');
-                return; // Don't log out user if we can't reach the server
-            }
-
-            const text = await response.text();
-
-            // Parse the JSON (handle non-standard JSON with unquoted keys and trailing commas)
-            let users;
-            try {
-                users = JSON.parse(text);
-            } catch (parseError) {
-                let fixedJson = text
-                    // Add quotes around unquoted keys
-                    .replace(/(\s*)(\w+)(\s*:\s*)/g, '$1"$2"$3')
-                    // Replace "null" string with null
-                    .replace(/:\s*"null"/g, ': null')
-                    // Remove trailing commas before ] or }
-                    .replace(/,(\s*[\]}])/g, '$1');
-                users = JSON.parse(fixedJson);
-            }
-
-            // Check if user still exists in the list
-            const userExists = users.some(u => u.userEmail.toLowerCase() === userEmail.toLowerCase());
-
-            if (!userExists) {
-                console.log('[Auth] User no longer exists in database, logging out:', userEmail);
-
-                // Set the logout message before navigating to login
-                this.logoutMessage =
-                    'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
-
+            if (isPlanExpired(loggedInUser.expiry_date)) {
+                console.log('[Auth] User plan expired from fresh check, logging out:', loggedInUser.email);
+                this.logoutMessage = 'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
+                
                 // Clear login state
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('loggedInUser');
-
+                
                 // Navigate to login view
                 this.currentView = 'login';
                 this.requestUpdate();
-            } else {
-                console.log('[Auth] User validation successful:', userEmail);
             }
-        } catch (error) {
-            console.error('[Auth] Error validating user:', error);
-            // Don't log out user on network errors - allow them to continue
+        } catch (e) {
+            console.error('[Auth] Error checking fresh expiry:', e);
         }
     }
 
@@ -1368,9 +1370,9 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         .onLoginSuccess=${user => this.handleLoginSuccess(user)}
                         .logoutMessage=${this.logoutMessage}
                         .onClearLogoutMessage=${() => {
-                        this.logoutMessage = '';
-                        this.requestUpdate();
-                    }}
+                            this.logoutMessage = '';
+                            this.requestUpdate();
+                        }}
                     ></login-view>
                 `;
 
@@ -1439,11 +1441,11 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         .shouldAnimateResponse=${this.shouldAnimateResponse}
                         @response-index-changed=${this.handleResponseIndexChanged}
                         @response-animation-complete=${() => {
-                        this.shouldAnimateResponse = false;
-                        this._currentResponseIsComplete = true;
-                        console.log('[response-animation-complete] Marked current response as complete');
-                        this.requestUpdate();
-                    }}
+                            this.shouldAnimateResponse = false;
+                            this._currentResponseIsComplete = true;
+                            console.log('[response-animation-complete] Marked current response as complete');
+                            this.requestUpdate();
+                        }}
                     ></assistant-view>
                 `;
 
@@ -1453,256 +1455,314 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
     }
 
     render() {
-        const mainContentClass = `main-content ${this.currentView === 'assistant'
-            ? 'assistant-view'
-            : this.currentView === 'onboarding'
-                ? 'onboarding-view'
-                : this.currentView === 'login'
+        const mainContentClass = `main-content ${
+            this.currentView === 'assistant'
+                ? 'assistant-view'
+                : this.currentView === 'onboarding'
+                  ? 'onboarding-view'
+                  : this.currentView === 'login'
                     ? 'login-view'
                     : 'with-border'
-            }`;
+        }`;
 
         // Hide header on login view
         const showHeader = this.currentView !== 'login';
-        
+
         // Show sidebar on all navigational views
         const showSidebar = ['main', 'customize', 'profile', 'help', 'history', 'advanced'].includes(this.currentView);
 
         return html`
             <div class="window-container">
-                ${showSidebar ? html`
-                <div class="sidebar">
-                    <button class="sidebar-icon-button ${this.currentView === 'main' ? 'active' : ''}" @click=${() => this.handleBackClick()}>
-                        <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                        </svg>
-                        <span>Home</span>
-                    </button>
-                    ${this.advancedMode
+                ${
+                    showSidebar
                         ? html`
-                                        <button class="sidebar-icon-button ${this.currentView === 'advanced' ? 'active' : ''}" @click=${() => this.handleAdvancedClick()}>
-                                            <?xml version="1.0" encoding="UTF-8"?><svg
-                                                width="24px"
-                                                stroke-width="1.7"
-                                                height="24px"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                color="currentColor"
-                                            >
-                                                <path d="M18.5 15L5.5 15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
-                                                <path
-                                                    d="M16 4L8 4"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                                <path
-                                                    d="M9 4.5L9 10.2602C9 10.7376 8.82922 11.1992 8.51851 11.5617L3.48149 17.4383C3.17078 17.8008 3 18.2624 3 18.7398V19C3 20.1046 3.89543 21 5 21L19 21C20.1046 21 21 20.1046 21 19V18.7398C21 18.2624 20.8292 17.8008 20.5185 17.4383L15.4815 11.5617C15.1708 11.1992 15 10.7376 15 10.2602L15 4.5"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                                <path
-                                                    d="M12 9.01L12.01 8.99889"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                                <path
-                                                    d="M11 2.01L11.01 1.99889"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.7"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                ></path>
-                                            </svg>
-                                            <span>Advanced</span>
-                                        </button>
-                                    `
-                        : ''}
-                              <button class="sidebar-icon-button ${this.currentView === 'profile' ? 'active' : ''}" @click=${() => this.handleProfileViewClick()}>
-                                  <?xml version="1.0" encoding="UTF-8"?><svg width="24px" height="24px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="currentColor"/></svg>
-                                  <span>Profile</span>
-                              </button>
-                              <button class="sidebar-icon-button ${this.currentView === 'customize' ? 'active' : ''}" @click=${() => this.handleCustomizeClick()}>
-                                  <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
+                              <div class="sidebar">
+                                  <button
+                                      class="sidebar-icon-button ${this.currentView === 'main' ? 'active' : ''}"
+                                      @click=${() => this.handleBackClick()}
                                   >
-                                      <path
-                                          d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                                      <svg
+                                          width="24px"
+                                          height="24px"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
                                           stroke="currentColor"
                                           stroke-width="1.7"
                                           stroke-linecap="round"
                                           stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                                  <span>Customize</span>
-                              </button>
-                              <button class="sidebar-icon-button ${this.currentView === 'help' ? 'active' : ''}" @click=${() => this.handleHelpClick()}>
-                                  <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
+                                      >
+                                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                      </svg>
+                                      <span>Home</span>
+                                  </button>
+                                  ${
+                                      this.advancedMode
+                                          ? html`
+                                                <button
+                                                    class="sidebar-icon-button ${this.currentView === 'advanced' ? 'active' : ''}"
+                                                    @click=${() => this.handleAdvancedClick()}
+                                                >
+                                                    <?xml version="1.0" encoding="UTF-8"?><svg
+                                                        width="24px"
+                                                        stroke-width="1.7"
+                                                        height="24px"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        color="currentColor"
+                                                    >
+                                                        <path
+                                                            d="M18.5 15L5.5 15"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.7"
+                                                            stroke-linejoin="round"
+                                                        ></path>
+                                                        <path
+                                                            d="M16 4L8 4"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.7"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        ></path>
+                                                        <path
+                                                            d="M9 4.5L9 10.2602C9 10.7376 8.82922 11.1992 8.51851 11.5617L3.48149 17.4383C3.17078 17.8008 3 18.2624 3 18.7398V19C3 20.1046 3.89543 21 5 21L19 21C20.1046 21 21 20.1046 21 19V18.7398C21 18.2624 20.8292 17.8008 20.5185 17.4383L15.4815 11.5617C15.1708 11.1992 15 10.7376 15 10.2602L15 4.5"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.7"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        ></path>
+                                                        <path
+                                                            d="M12 9.01L12.01 8.99889"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.7"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        ></path>
+                                                        <path
+                                                            d="M11 2.01L11.01 1.99889"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.7"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        ></path>
+                                                    </svg>
+                                                    <span>Advanced</span>
+                                                </button>
+                                            `
+                                          : ''
+                                  }
+                                  <button
+                                      class="sidebar-icon-button ${this.currentView === 'profile' ? 'active' : ''}"
+                                      @click=${() => this.handleProfileViewClick()}
                                   >
-                                      <path
-                                          d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                                          stroke="currentColor"
+                                      <?xml version="1.0" encoding="UTF-8"?><svg
+                                          width="24px"
+                                          height="24px"
                                           stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M12 18.01L12.01 17.9989"
-                                          stroke="currentColor"
-                                          stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                                  <span>Help</span>
-                              </button>
-                              <button class="sidebar-icon-button ${this.currentView === 'history' ? 'active' : ''}" @click=${() => this.handleHistoryClick()}>
-                                  <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
-                                      stroke-width="1.7"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      color="currentColor"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          color="currentColor"
+                                      >
+                                          <path
+                                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
+                                              fill="currentColor"
+                                          />
+                                      </svg>
+                                      <span>Profile</span>
+                                  </button>
+                                  <button
+                                      class="sidebar-icon-button ${this.currentView === 'customize' ? 'active' : ''}"
+                                      @click=${() => this.handleCustomizeClick()}
                                   >
-                                      <path
-                                          d="M12 8V12L15 15"
-                                          stroke="currentColor"
+                                      <?xml version="1.0" encoding="UTF-8"?><svg
+                                          width="24px"
+                                          height="24px"
                                           stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M3.05078 11.0001C3.27441 7.60061 5.22415 4.60729 8.14258 3.11572C11.061 1.62415 14.5625 1.85742 17.2725 3.72949C19.9824 5.60156 21.4951 8.83301 21.2715 12.2324C21.0479 15.6318 19.0981 18.6252 16.1797 20.1167C13.2612 21.6083 9.75977 21.375 7.0498 19.503"
-                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          color="currentColor"
+                                      >
+                                          <path
+                                              d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M19.6224 10.3954L18.5247 7.7448L20 6L18 4L16.2647 5.48295L13.5578 4.36974L12.9353 2H10.981L10.3491 4.40113L7.70441 5.51596L6 4L4 6L5.45337 7.78885L4.3725 10.4463L2 11V13L4.40111 13.6555L5.51575 16.2997L4 18L6 20L7.79116 18.5403L10.397 19.6123L11 22H13L13.6045 19.6132L16.2551 18.5155C16.6969 18.8313 18 20 18 20L20 18L18.5159 16.2494L19.6139 13.598L21.9999 12.9772L22 11L19.6224 10.3954Z"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                      </svg>
+                                      <span>Customize</span>
+                                  </button>
+                                  <button
+                                      class="sidebar-icon-button ${this.currentView === 'help' ? 'active' : ''}"
+                                      @click=${() => this.handleHelpClick()}
+                                  >
+                                      <?xml version="1.0" encoding="UTF-8"?><svg
+                                          width="24px"
+                                          height="24px"
                                           stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                      <path
-                                          d="M6 6L3 3M3 3V6M3 3H6"
-                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          color="currentColor"
+                                      >
+                                          <path
+                                              d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M12 18.01L12.01 17.9989"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                      </svg>
+                                      <span>Help</span>
+                                  </button>
+                                  <button
+                                      class="sidebar-icon-button ${this.currentView === 'history' ? 'active' : ''}"
+                                      @click=${() => this.handleHistoryClick()}
+                                  >
+                                      <?xml version="1.0" encoding="UTF-8"?><svg
+                                          width="24px"
+                                          height="24px"
                                           stroke-width="1.7"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                      ></path>
-                                  </svg>
-                                  <span>History</span>
-                              </button>
-                </div>
-                ` : ''}
-                <div class="container">
-                    ${showHeader
-                ? html`
-                              <app-header
-                                  .currentView=${this.currentView}
-                                  .statusText=${this.statusText}
-                                  .startTime=${this.startTime}
-                                  .currentMode=${this.currentMode}
-                                  .currentModel=${this.currentModel}
-                                  .advancedMode=${this.advancedMode}
-                                  .rateLimitEndTime=${this.rateLimitEndTime}
-                                  .rateLimitSource=${this.rateLimitSource}
-                                  .onCustomizeClick=${() => this.handleCustomizeClick()}
-                                  .onHelpClick=${() => this.handleHelpClick()}
-                                  .onHistoryClick=${() => this.handleHistoryClick()}
-                                  .onAdvancedClick=${() => this.handleAdvancedClick()}
-                                  .onCloseClick=${() => this.handleClose()}
-                                  .onBackClick=${() => this.handleBackClick()}
-                                  .onHideToggleClick=${() => this.handleHideToggle()}
-                                  .onRestartClick=${() => this.handleClearAndRestart()}
-                                  .onRateLimitExpired=${() => this.clearRateLimit()}
-                                  ?isClickThrough=${this._isClickThrough}
-                              ></app-header>
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          color="currentColor"
+                                      >
+                                          <path
+                                              d="M12 8V12L15 15"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M3.05078 11.0001C3.27441 7.60061 5.22415 4.60729 8.14258 3.11572C11.061 1.62415 14.5625 1.85742 17.2725 3.72949C19.9824 5.60156 21.4951 8.83301 21.2715 12.2324C21.0479 15.6318 19.0981 18.6252 16.1797 20.1167C13.2612 21.6083 9.75977 21.375 7.0498 19.503"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M6 6L3 3M3 3V6M3 3H6"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                      </svg>
+                                      <span>History</span>
+                                  </button>
+                              </div>
                           `
-                : ''}
+                        : ''
+                }
+                <div class="container">
+                    ${
+                        showHeader
+                            ? html`
+                                  <app-header
+                                      .currentView=${this.currentView}
+                                      .statusText=${this.statusText}
+                                      .startTime=${this.startTime}
+                                      .currentMode=${this.currentMode}
+                                      .currentModel=${this.currentModel}
+                                      .advancedMode=${this.advancedMode}
+                                      .rateLimitEndTime=${this.rateLimitEndTime}
+                                      .rateLimitSource=${this.rateLimitSource}
+                                      .onCustomizeClick=${() => this.handleCustomizeClick()}
+                                      .onHelpClick=${() => this.handleHelpClick()}
+                                      .onHistoryClick=${() => this.handleHistoryClick()}
+                                      .onAdvancedClick=${() => this.handleAdvancedClick()}
+                                      .onCloseClick=${() => this.handleClose()}
+                                      .onBackClick=${() => this.handleBackClick()}
+                                      .onHideToggleClick=${() => this.handleHideToggle()}
+                                      .onRestartClick=${() => this.handleClearAndRestart()}
+                                      .onRateLimitExpired=${() => this.clearRateLimit()}
+                                      ?isClickThrough=${this._isClickThrough}
+                                  ></app-header>
+                              `
+                            : ''
+                    }
                     <div class="${mainContentClass}">
                         <div class="view-container">${this.renderCurrentView()}</div>
                     </div>
                 </div>
             </div>
-            ${this._showCloseModal
-                ? html`
-                      <div class="modal-overlay" @click=${this.handleCloseModalCancel}>
-                          <div class="modal-content" @click=${e => e.stopPropagation()}>
-                              <div class="modal-title">End Session?</div>
-                              <div class="modal-description">Your conversation will be saved to history.</div>
-                              <div class="modal-buttons">
-                                  <button class="modal-btn modal-btn-restart" @click=${this.handleCloseAndRestart}>
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                          <path d="M1 4v6h6M23 20v-6h-6" stroke-linecap="round" stroke-linejoin="round" />
-                                          <path
-                                              d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"
-                                              stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                          />
-                                      </svg>
-                                      Restart New Session
-                                  </button>
-                                  <button class="modal-btn modal-btn-primary" @click=${this.handleCloseAndViewHistory}>
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                          <circle cx="12" cy="12" r="10" />
-                                          <path d="M12 6v6l4 2" />
-                                      </svg>
-                                      View Conversation History
-                                  </button>
-                                  <div class="modal-divider">or</div>
-                                  <button class="modal-btn modal-btn-secondary" @click=${this.handleCloseSession}>
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
-                                      </svg>
-                                      Close Session
-                                  </button>
-                                  <button class="modal-btn modal-btn-cancel" @click=${this.handleCloseModalCancel}>← Continue Current Session</button>
+            ${
+                this._showCloseModal
+                    ? html`
+                          <div class="modal-overlay" @click=${this.handleCloseModalCancel}>
+                              <div class="modal-content" @click=${e => e.stopPropagation()}>
+                                  <div class="modal-title">End Session?</div>
+                                  <div class="modal-description">Your conversation will be saved to history.</div>
+                                  <div class="modal-buttons">
+                                      <button class="modal-btn modal-btn-restart" @click=${this.handleCloseAndRestart}>
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                              <path d="M1 4v6h6M23 20v-6h-6" stroke-linecap="round" stroke-linejoin="round" />
+                                              <path
+                                                  d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"
+                                                  stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                              />
+                                          </svg>
+                                          Restart New Session
+                                      </button>
+                                      <button class="modal-btn modal-btn-primary" @click=${this.handleCloseAndViewHistory}>
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                              <circle cx="12" cy="12" r="10" />
+                                              <path d="M12 6v6l4 2" />
+                                          </svg>
+                                          View Conversation History
+                                      </button>
+                                      <div class="modal-divider">or</div>
+                                      <button class="modal-btn modal-btn-secondary" @click=${this.handleCloseSession}>
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                              <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+                                          </svg>
+                                          Close Session
+                                      </button>
+                                      <button class="modal-btn modal-btn-cancel" @click=${this.handleCloseModalCancel}>
+                                          ← Continue Current Session
+                                      </button>
+                                  </div>
                               </div>
                           </div>
-                      </div>
-                  `
-                : ''}
-            ${this.showToastFlag
-                ? html`
-                      <div class="toast-container">
-                          <div class="toast-pill">
-                              ${this.toastMessage}
+                      `
+                    : ''
+            }
+            ${
+                this.showToastFlag
+                    ? html`
+                          <div class="toast-container">
+                              <div class="toast-pill">${this.toastMessage}</div>
                           </div>
-                      </div>
-                  `
-                : ''}
+                      `
+                    : ''
+            }
         `;
     }
 
