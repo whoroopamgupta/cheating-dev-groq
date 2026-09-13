@@ -1,20 +1,66 @@
-const { getSupabaseAdmin } = require('./supabaseClient');
+const https = require('https');
 
 /**
  * Device session management for login limit enforcement.
  *
- * Uses the Supabase admin client (service_role key) to manage
- * the `device_sessions` table directly from the main process.
+ * Calls the Interview Cracked website API instead of accessing
+ * Supabase directly. The service_role key stays server-side.
  */
+
+const API_BASE = 'https://www.interviewcracked.com/api/device-sessions';
+
+/**
+ * Makes a POST request to the device-sessions API.
+ * @param {string} endpoint - 'check', 'deactivate', or 'heartbeat'
+ * @param {object} body - JSON request body
+ * @returns {Promise<object>}
+ */
+function apiPost(endpoint, body) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(`${API_BASE}/${endpoint}`);
+        const payload = JSON.stringify(body);
+
+        const options = {
+            hostname: url.hostname,
+            port: 443,
+            path: url.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload),
+            },
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    resolve(parsed);
+                } catch (e) {
+                    reject(new Error(`Invalid JSON response from ${endpoint}: ${data.substring(0, 200)}`));
+                }
+            });
+        });
+
+        req.on('error', (err) => {
+            reject(new Error(`Network error calling ${endpoint}: ${err.message}`));
+        });
+
+        // 10 second timeout
+        req.setTimeout(10000, () => {
+            req.destroy();
+            reject(new Error(`Timeout calling ${endpoint}`));
+        });
+
+        req.write(payload);
+        req.end();
+    });
+}
 
 /**
  * Checks whether the device is allowed to login and registers it if so.
- *
- * Logic:
- *   1. Query active sessions for the subscriber
- *   2. If this device already has an active session → update last_active_at → allow
- *   3. If active session count >= screens_allowed → block
- *   4. If under the limit → insert new session → allow
  *
  * @param {string} subscriberId - UUID of the subscriber
  * @param {string} deviceId - Hashed device fingerprint
@@ -24,88 +70,22 @@ const { getSupabaseAdmin } = require('./supabaseClient');
  */
 async function checkAndRegisterDevice(subscriberId, deviceId, deviceName, screensAllowed) {
     try {
-        const supabase = getSupabaseAdmin();
+        const result = await apiPost('check', {
+            subscriberId,
+            deviceId,
+            deviceName,
+            screensAllowed,
+        });
 
-        // Step 1: Get all active device sessions for this subscriber
-        const { data: activeSessions, error: fetchError } = await supabase
-            .from('device_sessions')
-            .select('*')
-            .eq('subscriber_id', subscriberId)
-            .eq('is_active', true);
-
-        if (fetchError) {
-            console.error('[DeviceSession] Error fetching active sessions:', fetchError);
-            return {
-                allowed: false,
-                error: `Database error: ${fetchError.message}`,
-            };
+        if (result.allowed) {
+            console.log('[DeviceSession] Device allowed via API');
+        } else {
+            console.log(`[DeviceSession] Device blocked: ${result.error}`);
         }
 
-        const sessions = activeSessions || [];
-
-        // Step 2: Check if this device already has an active session
-        const existingSession = sessions.find(s => s.device_id === deviceId);
-
-        if (existingSession) {
-            // Device is already registered — update last_active_at and allow login
-            const { error: updateError } = await supabase
-                .from('device_sessions')
-                .update({
-                    last_active_at: new Date().toISOString(),
-                    device_name: deviceName, // Update name in case it changed
-                })
-                .eq('id', existingSession.id);
-
-            if (updateError) {
-                console.error('[DeviceSession] Error updating session:', updateError);
-            }
-
-            console.log('[DeviceSession] Existing device session found, login allowed');
-            return { allowed: true };
-        }
-
-        // Step 3: Device is NOT registered — check the limit
-        const activeCount = sessions.length;
-        const maxAllowed = screensAllowed || 1;
-
-        if (activeCount >= maxAllowed) {
-            // Over the limit — BLOCK
-            console.log(`[DeviceSession] Device limit exceeded: ${activeCount} active >= ${maxAllowed} allowed`);
-            return {
-                allowed: false,
-                activeDevices: activeCount,
-                maxDevices: maxAllowed,
-                error: 'DEVICE_LIMIT_EXCEEDED',
-            };
-        }
-
-        // Step 4: Under the limit — register new device session
-        const { error: insertError } = await supabase.from('device_sessions').upsert(
-            {
-                subscriber_id: subscriberId,
-                device_id: deviceId,
-                device_name: deviceName,
-                is_active: true,
-                logged_in_at: new Date().toISOString(),
-                last_active_at: new Date().toISOString(),
-            },
-            {
-                onConflict: 'subscriber_id,device_id',
-            }
-        );
-
-        if (insertError) {
-            console.error('[DeviceSession] Error inserting session:', insertError);
-            return {
-                allowed: false,
-                error: `Database error: ${insertError.message}`,
-            };
-        }
-
-        console.log('[DeviceSession] New device registered, login allowed');
-        return { allowed: true };
+        return result;
     } catch (error) {
-        console.error('[DeviceSession] Unexpected error:', error);
+        console.error('[DeviceSession] API error:', error.message);
         return {
             allowed: false,
             error: error.message,
@@ -123,23 +103,20 @@ async function checkAndRegisterDevice(subscriberId, deviceId, deviceName, screen
  */
 async function deactivateDeviceSession(subscriberId, deviceId) {
     try {
-        const supabase = getSupabaseAdmin();
+        const result = await apiPost('deactivate', {
+            subscriberId,
+            deviceId,
+        });
 
-        const { error } = await supabase
-            .from('device_sessions')
-            .update({ is_active: false })
-            .eq('subscriber_id', subscriberId)
-            .eq('device_id', deviceId);
-
-        if (error) {
-            console.error('[DeviceSession] Error deactivating session:', error);
-            return { success: false, error: error.message };
+        if (result.success) {
+            console.log('[DeviceSession] Device session deactivated via API');
+        } else {
+            console.error('[DeviceSession] Deactivation failed:', result.error);
         }
 
-        console.log('[DeviceSession] Device session deactivated');
-        return { success: true };
+        return result;
     } catch (error) {
-        console.error('[DeviceSession] Unexpected error during deactivation:', error);
+        console.error('[DeviceSession] API error during deactivation:', error.message);
         return { success: false, error: error.message };
     }
 }
@@ -154,23 +131,14 @@ async function deactivateDeviceSession(subscriberId, deviceId) {
  */
 async function updateLastActive(subscriberId, deviceId) {
     try {
-        const supabase = getSupabaseAdmin();
+        const result = await apiPost('heartbeat', {
+            subscriberId,
+            deviceId,
+        });
 
-        const { error } = await supabase
-            .from('device_sessions')
-            .update({ last_active_at: new Date().toISOString() })
-            .eq('subscriber_id', subscriberId)
-            .eq('device_id', deviceId)
-            .eq('is_active', true);
-
-        if (error) {
-            console.error('[DeviceSession] Error updating last_active_at:', error);
-            return { success: false, error: error.message };
-        }
-
-        return { success: true };
+        return result;
     } catch (error) {
-        console.error('[DeviceSession] Unexpected error updating last active:', error);
+        console.error('[DeviceSession] API error during heartbeat:', error.message);
         return { success: false, error: error.message };
     }
 }
