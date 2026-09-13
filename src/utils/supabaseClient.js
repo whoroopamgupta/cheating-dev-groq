@@ -69,11 +69,17 @@ loadEnv();
 
 let adminClient = null;
 
+// Hardcoded fallbacks for packaged app (where .env may not exist).
+// These values are already used in LoginView.js and CheatingDaddyApp.js.
+const FALLBACK_SUPABASE_URL = 'https://ghiektugiazbydbhishq.supabase.co';
+const FALLBACK_SERVICE_ROLE_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdoaWVrdHVnaWF6YnlkYmhpc2hxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTE1MzM0NCwiZXhwIjoyMTA0NzI5MzQ0fQ.px2Xf4h7x0gDQ6X5m9bHWWlVfbWcZ5OEKmqwEc_ue3c';
+
 function getSupabaseAdmin() {
     if (adminClient) return adminClient;
 
-    const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
-    const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+    const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] || FALLBACK_SUPABASE_URL;
+    const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'] || FALLBACK_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl) {
         throw new Error('[SupabaseClient] NEXT_PUBLIC_SUPABASE_URL is not set in .env');
