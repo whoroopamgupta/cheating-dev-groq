@@ -477,14 +477,14 @@ export class LoginView extends LitElement {
                 const supaResponse = await fetch(supaUrl, {
                     method: 'POST',
                     headers: {
-                        'apikey': 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                        'Authorization': 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                        'Content-Type': 'application/json'
+                        apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                        Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ user_email: user.email })
+                    body: JSON.stringify({ user_email: user.email }),
                 });
                 const supaData = await supaResponse.json();
-                
+
                 if (supaData && typeof supaData === 'string') {
                     user.expiry_date = supaData;
                 }
@@ -497,6 +497,35 @@ export class LoginView extends LitElement {
                 this.errorMessage = 'Your subscription has expired. Please renew your plan.';
                 this.showError = true;
                 return;
+            }
+
+            // Step: Check device session limit via main process IPC
+            if (window.require) {
+                try {
+                    const { ipcRenderer } = window.require('electron');
+                    const deviceResult = await ipcRenderer.invoke('check-device-session', {
+                        subscriberId: user.id,
+                        screensAllowed: user.screens_allowed || 1,
+                    });
+
+                    if (!deviceResult.allowed) {
+                        if (deviceResult.error === 'DEVICE_LIMIT_EXCEEDED') {
+                            this.errorMessage =
+                                `You are already logged in on ${deviceResult.activeDevices} other device(s). ` +
+                                `Your account will be blocked if you try changing the device again ` +
+                                `without informing the Interview Cracked Team.`;
+                        } else {
+                            this.errorMessage = deviceResult.error || 'Device verification failed. Please try again.';
+                        }
+                        this.showError = true;
+                        return;
+                    }
+                } catch (deviceError) {
+                    console.error('[Login] Device session check error:', deviceError);
+                    // If the device check fails (e.g. no service key configured),
+                    // allow login to proceed to avoid locking users out
+                    console.warn('[Login] Device check failed, allowing login as fallback');
+                }
             }
 
             // Login successful

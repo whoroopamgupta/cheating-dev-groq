@@ -273,13 +273,13 @@ export class MainView extends LitElement {
 
     constructor() {
         super();
-        this.onStart = () => {};
-        this.onAPIKeyHelp = () => {};
+        this.onStart = () => { };
+        this.onAPIKeyHelp = () => { };
         this.isInitializing = false;
-        this.onLayoutModeChange = () => {};
-        this.onLogout = () => {};
+        this.onLayoutModeChange = () => { };
+        this.onLogout = () => { };
         this.showApiKeyError = false;
-        this.onClearAndRestart = () => {};
+        this.onClearAndRestart = () => { };
         this.boundKeydownHandler = this.handleKeydown.bind(this);
         // Load selected profile from localStorage (default to interview on first run)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
@@ -362,14 +362,13 @@ export class MainView extends LitElement {
 
     // Get the current API key based on profile
     getCurrentApiKey() {
-        const user = this.getLoggedInUser();
-        if (user && user.api_key_included && user.api_key) {
-            return user.api_key;
-        }
-
         if (this.isExamMode()) {
             return localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey') || '';
         } else {
+            const user = this.getLoggedInUser();
+            if (user && (user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
+                return ''; // Return empty so the 'API Key included in plan' placeholder is visible
+            }
             return localStorage.getItem('groqApiKey') || '';
         }
     }
@@ -500,7 +499,8 @@ export class MainView extends LitElement {
     render() {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const user = this.getLoggedInUser();
-        const apiKeyIncluded = user && user.api_key_included;
+        // API key included applies ONLY to Groq API (non-exam mode)
+        const apiKeyIncluded = !this.isExamMode() && user && (user.api_key_included === true || user.api_key_included === 'yes');
 
         // Determine profile label based on selected profile
         let profileLabel;
@@ -530,7 +530,7 @@ export class MainView extends LitElement {
             <div class="input-group">
                 <input
                     type="password"
-                    placeholder="${apiKeyIncluded ? 'API Key included in plan' : this.getApiKeyPlaceholder()}"
+                    placeholder="${apiKeyIncluded ? 'You are using Interview Cracked API Key' : this.getApiKeyPlaceholder()}"
                     .value=${this.getCurrentApiKey()}
                     @input=${this.handleInput}
                     class="${this.showApiKeyError ? 'api-key-error' : ''}"
@@ -540,15 +540,14 @@ export class MainView extends LitElement {
                     ${this.getStartButtonText()}
                 </button>
             </div>
-            ${
-                !apiKeyIncluded
-                    ? html`
+            ${!apiKeyIncluded
+                ? html`
                           <p class="description">
                               Don't have an API key?
                               <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span>
                           </p>
                       `
-                    : ''
+                : ''
             }
             <p class="shortcut-hint">Press <strong>${isMac ? '⌘+⌥+R' : 'Ctrl+Alt+R'}</strong> to clear session and automatically restart</p>
 

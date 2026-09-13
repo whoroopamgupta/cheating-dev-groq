@@ -20,7 +20,7 @@ function handleSquirrelEvent(squirrelCommand) {
     const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
     const exeName = path.basename(process.execPath);
 
-    const spawn = function(command, args) {
+    const spawn = function (command, args) {
         let spawnedProcess;
         try {
             spawnedProcess = childProcess.spawn(command, args, { detached: true });
@@ -30,7 +30,7 @@ function handleSquirrelEvent(squirrelCommand) {
         return spawnedProcess;
     };
 
-    const spawnUpdate = function(args) {
+    const spawnUpdate = function (args) {
         return spawn(updateDotExe, args);
     };
 
@@ -64,6 +64,8 @@ const { initializeRandomProcessNames } = require('./utils/processRandomizer');
 const { applyAntiAnalysisMeasures } = require('./utils/stealthFeatures');
 const { getLocalConfig, writeConfig } = require('./config');
 const { extractTextFromFile } = require('./utils/documentProcessor');
+const { getDeviceId, getDeviceName } = require('./utils/deviceId');
+const { checkAndRegisterDevice, deactivateDeviceSession } = require('./utils/deviceSession');
 const path = require('path');
 const os = require('os');
 
@@ -128,12 +130,30 @@ app.on('window-all-closed', () => {
     }
 });
 
-app.on('before-quit', async (event) => {
+app.on('before-quit', async event => {
     stopMacOSAudioCapture();
 
     // Flush localStorage and other storage to disk before quitting
     // This is CRITICAL for macOS to persist localStorage between restarts
     event.preventDefault();
+
+    // Deactivate device session on quit (graceful cleanup)
+    try {
+        if (mainWindow) {
+            const loggedInUserStr = await mainWindow.webContents.executeJavaScript('localStorage.getItem("loggedInUser")');
+            if (loggedInUserStr) {
+                const loggedInUser = JSON.parse(loggedInUserStr);
+                if (loggedInUser && loggedInUser.id) {
+                    const deviceId = getDeviceId();
+                    await deactivateDeviceSession(loggedInUser.id, deviceId);
+                    console.log('Device session deactivated on quit');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error deactivating device session on quit:', error);
+    }
+
     try {
         const { session } = require('electron');
         console.log('Flushing storage data to disk...');
@@ -155,7 +175,7 @@ app.on('activate', () => {
 
 function setupGeneralIpcHandlers() {
     // Config-related IPC handlers
-    ipcMain.handle('set-onboarded', async (event) => {
+    ipcMain.handle('set-onboarded', async event => {
         try {
             const config = getLocalConfig();
             config.onboarded = true;
@@ -173,7 +193,7 @@ function setupGeneralIpcHandlers() {
             if (!validLevels.includes(stealthLevel)) {
                 throw new Error(`Invalid stealth level: ${stealthLevel}. Must be one of: ${validLevels.join(', ')}`);
             }
-            
+
             const config = getLocalConfig();
             config.stealthLevel = stealthLevel;
             writeConfig(config);
@@ -201,7 +221,7 @@ function setupGeneralIpcHandlers() {
         }
     });
 
-    ipcMain.handle('get-config', async (event) => {
+    ipcMain.handle('get-config', async event => {
         try {
             const config = getLocalConfig();
             return { success: true, config };
@@ -241,7 +261,6 @@ function setupGeneralIpcHandlers() {
     ipcMain.handle('update-content-protection', async (event, contentProtection) => {
         try {
             if (mainWindow) {
-
                 // Get content protection setting from localStorage via cheddar
                 const contentProtection = await mainWindow.webContents.executeJavaScript('cheddar.getContentProtection()');
                 mainWindow.setContentProtection(contentProtection);
@@ -269,7 +288,7 @@ function setupGeneralIpcHandlers() {
             // Forward VAD-processed audio segment to Gemini or audio processing
             // This handler bridges VAD output to existing audio processing pipeline
             console.log('Received VAD audio segment:', audioSegment ? 'Valid segment' : 'Invalid segment');
-            
+
             // You can add additional processing here if needed
             // For now, this just acknowledges receipt of the VAD segment
             return { success: true };
@@ -299,6 +318,36 @@ function setupGeneralIpcHandlers() {
             return { success: true, text: rawText };
         } catch (error) {
             console.error('[MAIN] Resume processing error:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // Device session management handlers
+    ipcMain.handle('check-device-session', async (event, { subscriberId, screensAllowed }) => {
+        try {
+            const deviceId = getDeviceId();
+            const deviceName = getDeviceName();
+            console.log(`[MAIN] Checking device session for subscriber: ${subscriberId}`);
+            console.log(`[MAIN] Device: ${deviceName} (${deviceId.substring(0, 12)}...)`);
+
+            const result = await checkAndRegisterDevice(subscriberId, deviceId, deviceName, screensAllowed);
+
+            return result;
+        } catch (error) {
+            console.error('[MAIN] Device session check error:', error);
+            return { allowed: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('deactivate-device-session', async (event, { subscriberId }) => {
+        try {
+            const deviceId = getDeviceId();
+            console.log(`[MAIN] Deactivating device session for subscriber: ${subscriberId}`);
+
+            const result = await deactivateDeviceSession(subscriberId, deviceId);
+            return result;
+        } catch (error) {
+            console.error('[MAIN] Device session deactivation error:', error);
             return { success: false, error: error.message };
         }
     });

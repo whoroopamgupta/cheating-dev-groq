@@ -410,7 +410,8 @@ export class CheatingDaddyApp extends LitElement {
                         localStorage.removeItem('isLoggedIn');
                         localStorage.removeItem('loggedInUser');
                         isLoggedIn = false;
-                        this.logoutMessage = 'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
+                        this.logoutMessage =
+                            'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
                     }
                 } catch (e) {
                     console.error('[Auth] Error parsing user data on boot:', e);
@@ -433,6 +434,7 @@ export class CheatingDaddyApp extends LitElement {
         this.startTime = null;
         this.isRecording = false;
         this.sessionActive = false;
+        this._sessionTimeoutId = null;
         // Default to interview profile on first run (if nothing is stored yet)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
         this.selectedLanguage = localStorage.getItem('selectedLanguage') || 'en-US';
@@ -808,6 +810,11 @@ export class CheatingDaddyApp extends LitElement {
     async handleCloseSession() {
         this._showCloseModal = false;
 
+        if (this._sessionTimeoutId) {
+            clearTimeout(this._sessionTimeoutId);
+            this._sessionTimeoutId = null;
+        }
+
         // Save conversation to history before closing
         this.saveCurrentConversation();
 
@@ -834,6 +841,11 @@ export class CheatingDaddyApp extends LitElement {
     // Close session and go to conversation history
     async handleCloseAndViewHistory() {
         this._showCloseModal = false;
+
+        if (this._sessionTimeoutId) {
+            clearTimeout(this._sessionTimeoutId);
+            this._sessionTimeoutId = null;
+        }
 
         // Save conversation to history before closing
         this.saveCurrentConversation();
@@ -992,6 +1004,15 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
     // Main view event handlers
     async handleStart() {
+        // Start 2 hour auto-close timer (2 * 60 * 60 * 1000 = 7200000 ms)
+        if (this._sessionTimeoutId) {
+            clearTimeout(this._sessionTimeoutId);
+        }
+        this._sessionTimeoutId = setTimeout(() => {
+            console.log('[CheatingDaddyApp] Session auto-closed after 2 hours');
+            this.handleCloseSession();
+        }, 7200000);
+
         // Auto-set mode based on profile
         let selectedMode;
         if (this.selectedProfile === 'exam') {
@@ -1007,9 +1028,30 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         // Check for the correct API key based on profile
         // exam uses Gemini, exam-groq and all others use Groq
         const isGeminiExamMode = this.selectedProfile === 'exam';
-        const apiKey = isGeminiExamMode
-            ? (localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey'))?.trim()
-            : localStorage.getItem('groqApiKey')?.trim();
+
+        let apiKey = '';
+        if (isGeminiExamMode) {
+            apiKey = (localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey'))?.trim();
+        } else {
+            // Groq API Key logic
+            const loggedInUserStr = localStorage.getItem('loggedInUser');
+            let isApiKeyIncluded = false;
+            let dbApiKey = null;
+
+            if (loggedInUserStr) {
+                try {
+                    const user = JSON.parse(loggedInUserStr);
+                    if ((user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
+                        isApiKeyIncluded = true;
+                        dbApiKey = user.api_key;
+                    }
+                } catch (e) {
+                    console.error('[CheatingDaddyApp] Error parsing user data for API key:', e);
+                }
+            }
+
+            apiKey = isApiKeyIncluded ? dbApiKey : localStorage.getItem('groqApiKey')?.trim();
+        }
 
         if (!apiKey || apiKey === '') {
             // Trigger the red blink animation on the API key input
@@ -1261,8 +1303,33 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         this.requestUpdate();
     }
 
-    handleLogout() {
+    async handleLogout() {
         console.log('[CheatingDaddyApp] User logging out');
+
+        if (this._sessionTimeoutId) {
+            clearTimeout(this._sessionTimeoutId);
+            this._sessionTimeoutId = null;
+        }
+
+        // Deactivate device session before clearing login state
+        if (window.require) {
+            try {
+                const loggedInUserStr = localStorage.getItem('loggedInUser');
+                if (loggedInUserStr) {
+                    const loggedInUser = JSON.parse(loggedInUserStr);
+                    if (loggedInUser && loggedInUser.id) {
+                        const { ipcRenderer } = window.require('electron');
+                        await ipcRenderer.invoke('deactivate-device-session', {
+                            subscriberId: loggedInUser.id,
+                        });
+                        console.log('[CheatingDaddyApp] Device session deactivated');
+                    }
+                }
+            } catch (error) {
+                console.error('[CheatingDaddyApp] Error deactivating device session:', error);
+            }
+        }
+
         // Clear login state
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('loggedInUser');
@@ -1284,11 +1351,11 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             const supaResponse = await fetch(supaUrl, {
                 method: 'POST',
                 headers: {
-                    'apikey': 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                    'Authorization': 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                    'Content-Type': 'application/json'
+                    apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                    Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ user_email: loggedInUser.email })
+                body: JSON.stringify({ user_email: loggedInUser.email }),
             });
             const supaData = await supaResponse.json();
 
@@ -1300,12 +1367,13 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
             if (isPlanExpired(loggedInUser.expiry_date)) {
                 console.log('[Auth] User plan expired from fresh check, logging out:', loggedInUser.email);
-                this.logoutMessage = 'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
-                
+                this.logoutMessage =
+                    'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
+
                 // Clear login state
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('loggedInUser');
-                
+
                 // Navigate to login view
                 this.currentView = 'login';
                 this.requestUpdate();
@@ -1603,43 +1671,6 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                       <span>Customize</span>
                                   </button>
                                   <button
-                                      class="sidebar-icon-button ${this.currentView === 'help' ? 'active' : ''}"
-                                      @click=${() => this.handleHelpClick()}
-                                  >
-                                      <?xml version="1.0" encoding="UTF-8"?><svg
-                                          width="24px"
-                                          height="24px"
-                                          stroke-width="1.7"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          color="currentColor"
-                                      >
-                                          <path
-                                              d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                                              stroke="currentColor"
-                                              stroke-width="1.7"
-                                              stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                          ></path>
-                                          <path
-                                              d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999"
-                                              stroke="currentColor"
-                                              stroke-width="1.7"
-                                              stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                          ></path>
-                                          <path
-                                              d="M12 18.01L12.01 17.9989"
-                                              stroke="currentColor"
-                                              stroke-width="1.7"
-                                              stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                          ></path>
-                                      </svg>
-                                      <span>Help</span>
-                                  </button>
-                                  <button
                                       class="sidebar-icon-button ${this.currentView === 'history' ? 'active' : ''}"
                                       @click=${() => this.handleHistoryClick()}
                                   >
@@ -1675,6 +1706,43 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                                           ></path>
                                       </svg>
                                       <span>History</span>
+                                  </button>
+                                  <button
+                                      class="sidebar-icon-button ${this.currentView === 'help' ? 'active' : ''}"
+                                      @click=${() => this.handleHelpClick()}
+                                  >
+                                      <?xml version="1.0" encoding="UTF-8"?><svg
+                                          width="24px"
+                                          height="24px"
+                                          stroke-width="1.7"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          color="currentColor"
+                                      >
+                                          <path
+                                              d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M9 9C9 5.49997 14.5 5.5 14.5 9C14.5 11.5 12 10.9999 12 13.9999"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                          <path
+                                              d="M12 18.01L12.01 17.9989"
+                                              stroke="currentColor"
+                                              stroke-width="1.7"
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                          ></path>
+                                      </svg>
+                                      <span>Help</span>
                                   </button>
                               </div>
                           `
