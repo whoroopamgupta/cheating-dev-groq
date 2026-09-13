@@ -26,12 +26,16 @@ if (typeof global.WebSocket === 'undefined') {
 function loadEnv() {
     // Try loading from .env in the project root
     const envPaths = [path.join(__dirname, '..', '..', '.env'), path.join(process.cwd(), '.env')];
+    
+    console.log('[SupabaseClient] Looking for .env files at:', envPaths);
 
     for (const envPath of envPaths) {
         try {
             if (fs.existsSync(envPath)) {
+                console.log(`[SupabaseClient] Found .env at: ${envPath}`);
                 const envContent = fs.readFileSync(envPath, 'utf8');
                 const lines = envContent.split('\n');
+                let loadedCount = 0;
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (trimmed && !trimmed.startsWith('#')) {
@@ -41,11 +45,15 @@ function loadEnv() {
                             const value = trimmed.substring(eqIndex + 1).trim();
                             if (!process.env[key]) {
                                 process.env[key] = value;
+                                loadedCount++;
                             }
                         }
                     }
                 }
+                console.log(`[SupabaseClient] Loaded ${loadedCount} variables from ${envPath}`);
                 break;
+            } else {
+                console.log(`[SupabaseClient] No .env found at: ${envPath}`);
             }
         } catch (e) {
             console.warn('[SupabaseClient] Could not read .env at', envPath, e.message);
@@ -61,8 +69,8 @@ let adminClient = null;
 function getSupabaseAdmin() {
     if (adminClient) return adminClient;
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+    const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
     if (!supabaseUrl) {
         throw new Error('[SupabaseClient] NEXT_PUBLIC_SUPABASE_URL is not set in .env');
