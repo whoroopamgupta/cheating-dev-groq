@@ -26,6 +26,9 @@ if (typeof global.WebSocket === 'undefined') {
 function loadEnv() {
     // Try loading from .env in the project root
     const envPaths = [path.join(__dirname, '..', '..', '.env'), path.join(process.cwd(), '.env')];
+    if (process.resourcesPath) {
+        envPaths.push(path.join(process.resourcesPath, '.env'));
+    }
     
     console.log('[SupabaseClient] Looking for .env files at:', envPaths);
 

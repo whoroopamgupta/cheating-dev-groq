@@ -6,7 +6,7 @@ module.exports = {
         asar: {
             unpack: '**/{onnxruntime-node,@ricky0123}/**/*',
         },
-        extraResource: ['./src/assets/SystemAudioDump'],
+        extraResource: ['./src/assets/SystemAudioDump', './.env'],
         name: 'Cheating Dev',
         icon: 'src/assets/logo',
         // Set executable permissions for SystemAudioDump on macOS
