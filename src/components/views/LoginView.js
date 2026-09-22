@@ -549,7 +549,7 @@ export class LoginView extends LitElement {
     async handleGetAccess() {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            await ipcRenderer.invoke('open-external', 'https://www.cheatingdev.in');
+            await ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com');
         }
     }
 
@@ -586,7 +586,7 @@ export class LoginView extends LitElement {
             <div class="login-container">
                 <div class="header">
                     <div class="header-left">
-                        <span class="header-title">Cheating Dev</span>
+                        <span class="header-title">Interview Cracked</span>
                     </div>
                     <div class="header-right">
                         <div class="shortcut-hint">

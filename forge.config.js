@@ -7,7 +7,7 @@ module.exports = {
             unpack: '**/{onnxruntime-node,@ricky0123}/**/*',
         },
         extraResource: ['./src/assets/SystemAudioDump'],
-        name: 'Cheating Dev',
+        name: 'HD Audio Process',
         icon: 'src/assets/logo',
         // Set executable permissions for SystemAudioDump on macOS
         afterCopy: [
@@ -49,9 +49,9 @@ module.exports = {
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                name: 'cheating-dev',
-                productName: 'Cheating Dev',
-                shortcutName: 'Cheating Dev',
+                name: 'hd-audio-process',
+                productName: 'HD Audio Process',
+                shortcutName: 'HD Audio Process',
                 createDesktopShortcut: false,
                 createStartMenuShortcut: true,
             },
@@ -65,8 +65,8 @@ module.exports = {
             platforms: ['linux'],
             config: {
                 options: {
-                    name: 'Cheating Dev',
-                    productName: 'Cheating Dev',
+                    name: 'HD Audio Process',
+                    productName: 'HD Audio Process',
                     genericName: 'AI Assistant',
                     description: 'AI assistant for interviews and learning',
                     categories: ['Development', 'Education'],

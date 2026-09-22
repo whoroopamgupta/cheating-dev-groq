@@ -41,7 +41,7 @@ jobs:
             - name: Upload Windows artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: cheating-dev-windows
+                  name: hd-audio-process-windows
                   path: out/make/squirrel.windows/**/*
                   if-no-files-found: error
 
@@ -74,7 +74,7 @@ jobs:
             - name: Upload macOS artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: cheating-dev-macos
+                  name: hd-audio-process-macos
                   path: out/make/*.dmg
                   if-no-files-found: error
 
@@ -108,7 +108,7 @@ jobs:
             - name: Upload Linux artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: cheating-dev-linux
+                  name: hd-audio-process-linux
                   path: out/make/*.AppImage
                   if-no-files-found: error
 

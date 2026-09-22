@@ -1,8 +1,8 @@
 {
-    "name": "cheating-dev",
-    "productName": "Cheating-Dev",
+    "name": "hd-audio-process",
+    "productName": "HD Audio Process",
     "version": "0.5.5",
-    "description": "cheating dev",
+    "description": "HD Audio Process",
     "main": "src/index.js",
     "scripts": {
         "start": "electron-forge start",
@@ -13,11 +13,10 @@
         "test": "vitest run"
     },
     "keywords": [
-        "cheating dev",
-        "cheating dev ai",
-        "cheating dev ai assistant",
-        "cheating dev ai assistant for interviews",
-        "cheating dev ai assistant for interviews"
+        "hd audio process",
+        "ai assistant",
+        "interview assistant",
+        "interview cracked"
     ],
     "author": {
         "name": "cheatingdev",

@@ -379,16 +379,16 @@ export class AppHeader extends LitElement {
 
     getViewTitle() {
         const titles = {
-            onboarding: 'Welcome to Cheating Dev',
-            main: 'Cheating Dev',
+            onboarding: 'Welcome to Interview Cracked',
+            main: 'Interview Cracked',
             profile: 'AI Profile & Behavior',
             customize: 'Customize',
             help: 'Help & Shortcuts',
             history: 'Conversation History',
             advanced: 'Advanced Tools',
-            assistant: 'Cheating Dev',
+            assistant: 'Interview Cracked',
         };
-        return titles[this.currentView] || 'Cheating Dev';
+        return titles[this.currentView] || 'Interview Cracked';
     }
 
     getElapsedTime() {
@@ -442,7 +442,7 @@ export class AppHeader extends LitElement {
     async handleRateLimitLinkClick(e) {
         e.preventDefault();
         e.stopPropagation();
-        const url = 'https://www.cheatingdev.in/groq-api-key';
+        const url = 'https://www.interviewcracked.com/groq-api-key';
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('open-external', url);
@@ -458,9 +458,6 @@ export class AppHeader extends LitElement {
             <div class="header">
                 <div class="header-title">
                     ${this.getViewTitle()}
-                    ${modelName && this.currentView === 'assistant'
-                ? html`<span class="model-badge ${this.getModelBadgeClass()}">${modelName}</span>`
-                : ''}
                 </div>
                 <div class="header-actions">
                     ${rateLimitCountdown && this.currentView === 'assistant'

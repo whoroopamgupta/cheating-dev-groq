@@ -1181,7 +1181,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             // Open different URLs based on current profile
             // exam uses Gemini, exam-groq and all others use Groq
             const isGeminiExamMode = this.selectedProfile === 'exam';
-            const url = isGeminiExamMode ? 'https://www.cheatingdev.in/gemini-api-key' : 'https://www.cheatingdev.in/groq-api-key';
+            const url = isGeminiExamMode ? 'https://www.interviewcracked.com/gemini-api-key' : 'https://www.interviewcracked.com/groq-api-key';
             await ipcRenderer.invoke('open-external', url);
         }
     }

@@ -335,7 +335,7 @@ export class HelpView extends LitElement {
                         <span>Community & Support</span>
                     </div>
                     <div class="community-links">
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://cheatingdev.in')}>🌐 Official Website</div>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://www.interviewcracked.com')}>🌐 Official Website</div>
                         <div class="community-link" @click=${() => this.handleExternalLinkClick('mailto:support@interviewcracked.com')}>📧 Support: support@interviewcracked.com</div>
                     </div>
                 </div>
