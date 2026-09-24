@@ -703,17 +703,15 @@ export class ProfileView extends LitElement {
             let apiKey = localStorage.getItem('groqApiKey')?.trim() || localStorage.getItem('apiKey')?.trim();
 
             // Check for database-provided API key
-            const dbDataStr = localStorage.getItem('dbData');
-            if (dbDataStr) {
+            const loggedInUserStr = localStorage.getItem('loggedInUser');
+            if (loggedInUserStr) {
                 try {
-                    const dbData = JSON.parse(dbDataStr);
-                    const email = localStorage.getItem('userEmail');
-                    const user = dbData[email];
-                    if (user && user.auth_key === 'yes' && user.api_key_include === 'yes' && user.api_key) {
+                    const user = JSON.parse(loggedInUserStr);
+                    if (user && (user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
                         apiKey = user.api_key;
                     }
                 } catch (e) {
-                    console.error('Error parsing dbData for API key', e);
+                    console.error('Error parsing loggedInUser for API key', e);
                 }
             }
 
