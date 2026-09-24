@@ -672,9 +672,9 @@ export class AssistantView extends LitElement {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
             border: 1px solid rgba(139, 92, 246, 0.4);
             color: var(--analyze-btn-text-color, #a78bfa);
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 500;
             transition: all 0.2s ease;
             display: flex;
@@ -809,7 +809,7 @@ export class AssistantView extends LitElement {
             negotiation: 'Negotiation',
             'exam-groq': 'Exam Assistant',
             exam: 'Exam Assistant',
-            product: 'Job Interview - Product Based',
+
         };
     }
 
@@ -1302,18 +1302,7 @@ export class AssistantView extends LitElement {
                 ${this.showAnalyzeButton
                 ? html` <button class="analyze-screen-btn" @click=${this.onAnalyzeScreen}>📸 Analyze Screen & Answer</button> `
                 : ''}
-                ${this.selectedProfile === 'product'
-                ? html`
-                          <button
-                              class="go-deeper-btn"
-                              @click=${this.onGoDeeper}
-                              title="Get a more detailed breakdown of the last answer"
-                              ?disabled=${!this.responses || this.responses.length === 0}
-                          >
-                              🔍 Break Down Further
-                          </button>
-                      `
-                : ''}
+
             </div>
 
             <div class="text-input-container">

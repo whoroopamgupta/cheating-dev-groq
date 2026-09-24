@@ -863,7 +863,7 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
                 try {
                     const result = await ipcRenderer.invoke('groq-generate-response', {
                         message:
-                            'Analyze this screenshot and answer the question/problem shown. CRITICAL: If it shows code or a coding problem, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor (C++, Java, Python, JavaScript, etc.) and provide your solution ONLY in that detected language. DO NOT default to Python or any other language - use EXACTLY what is shown on screen. Preserve the exact function signature if visible. If it shows an interview question, provide a natural, conversational answer.',
+                            'Analyze this screenshot and answer the question/problem shown. CRITICAL CHAT RULE: If the screenshot shows a chat window (Google Meet, Zoom, Microsoft Teams, Slack, or any messaging interface), focus ONLY on the LATEST/MOST RECENT message or question visible at the BOTTOM of the chat. Ignore older messages above it. The newest question is always at the bottom of the chat — that is the one you must answer. CRITICAL CODING RULE: If it shows code or a coding problem, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor (C++, Java, Python, JavaScript, etc.) and provide your solution ONLY in that detected language. DO NOT default to Python or any other language - use EXACTLY what is shown on screen. Preserve the exact function signature if visible. If it shows an interview question, provide a natural, conversational answer.',
                         imageBase64: base64data,
                     });
 

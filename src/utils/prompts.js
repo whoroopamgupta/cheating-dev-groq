@@ -984,20 +984,36 @@ You are trying to show **good judgment**.
 };
 
 function buildSystemPrompt(promptParts, customPrompt = '', googleSearchEnabled = true, resumeContext = '') {
-    const sections = [promptParts.intro, '\n\n', promptParts.formatRequirements];
+    const globalRules = `**GLOBAL INSTRUCTIONS (APPLY TO EVERY RESPONSE):**
+1. **ABSOLUTE ACCURACY WITHOUT HESITATION**: You must provide highly accurate, correct technical and factual answers immediately. Do not hallucinate or guess, and do not sacrifice speed.
+2. **EXTREMELY HUMANIZED**: Your responses must sound like a real human talking, not an AI. Do not sound rehearsed, robotic, or overly polished. Let the answer flow naturally.
+3. **INDIAN ENGLISH CONVERSATIONAL TONE**: Speak naturally like an Indian professional. Use natural conversational fillers (e.g., "Basically,", "Actually,", "See,", "So,") where appropriate, but maintain a polite and professional tone. Avoid overly western slang.
+4. **NO AI PREAMBLES OR APOLOGIES**: Never start your response with "Sure!", "I can help with that", "Here is the answer", or "As an AI...". Dive straight into the answer as a human would in a conversation.`;
+
+    const sections = [globalRules, '\n\n', promptParts.intro, '\n\n', promptParts.formatRequirements];
 
     // Only add search usage section if Google Search is enabled
     if (googleSearchEnabled) {
         sections.push('\n\n', promptParts.searchUsage);
     }
 
-    sections.push('\n\n', promptParts.content, '\n\nUser-provided context\n-----\n', customPrompt, '\n-----\n\n');
+    sections.push('\n\n', promptParts.content);
+
+    if (customPrompt && customPrompt.trim() !== '') {
+        sections.push(
+            '\n\n=== STRICT CUSTOM INSTRUCTIONS ===\n',
+            'The user has provided the following custom instructions. These instructions SUPERSEDE all other formatting and stylistic guidelines. You MUST follow these instructions strictly in every response:\n\n',
+            customPrompt,
+            '\n==================================\n\n'
+        );
+    }
 
     if (resumeContext) {
         sections.push(
-            'Context regarding the user\'s background (Use this to tailor your answers if applicable):\n-----\n',
+            '\n\n=== CRITICAL BACKGROUND (USER RESUME) ===\n',
+            'You MUST read the following background carefully. When answering questions (especially behavioral or experience-based ones), actively pull experiences, skills, metrics, and projects from this resume to craft highly personalized and authentic answers. NEVER make up generic examples if you can use facts from this background.\n\n',
             resumeContext,
-            '\n-----\n\n'
+            '\n==========================================\n\n'
         );
     }
 

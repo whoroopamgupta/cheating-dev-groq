@@ -109,6 +109,12 @@ export class CustomDropdown extends LitElement {
             font-weight: 500;
         }
 
+        .dropdown-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
         .option-content {
             display: flex;
             align-items: center;
@@ -250,12 +256,13 @@ export class CustomDropdown extends LitElement {
                     ${this.options.map(
                         option => html`
                             <div
-                                class="dropdown-option ${this.value === option.value ? 'selected' : ''}"
-                                @click=${e => this.selectOption(option.value, e)}
+                                class="dropdown-option ${this.value === option.value ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}"
+                                @click=${e => !option.disabled && this.selectOption(option.value, e)}
                             >
-                                <span class="option-content">
+                                <span class="option-content" style="display: flex; align-items: center; width: 100%;">
                                     ${option.icon ? html`<img class="option-icon" src="${option.icon}" alt="" />` : ''}
-                                    <span>${option.label}</span>
+                                    <span style="flex: 1;">${option.label}</span>
+                                    ${option.alwaysActive ? html`<span style="color: #10b981; font-weight: bold; font-size: 10px; margin-left: auto;">ALWAYS ON ✓</span>` : ''}
                                 </span>
                             </div>
                         `

@@ -28,6 +28,14 @@ export class AppHeader extends LitElement {
             gap: 8px;
         }
 
+        .header-logo {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(139, 92, 246, 0.2);
+            -webkit-user-drag: none;
+        }
+
         .model-badge {
             font-size: 10px;
             font-weight: 600;
@@ -161,6 +169,8 @@ export class AppHeader extends LitElement {
             font-size: var(--header-font-size-small);
             font-weight: 500;
             display: flex;
+            align-items: center;
+            gap: 6px;
             opacity: 0.6;
             transition: opacity 0.2s ease;
         }
@@ -173,6 +183,20 @@ export class AppHeader extends LitElement {
         .icon-button:hover {
             background: var(--hover-background);
             opacity: 1;
+        }
+        
+        .session-close-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 4px 12px 4px 8px;
+            border-radius: 6px;
+            opacity: 0.9;
+        }
+        
+        .session-close-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
         }
 
         .button:hover {
@@ -457,6 +481,7 @@ export class AppHeader extends LitElement {
         return html`
             <div class="header">
                 <div class="header-title">
+                    <img src="assets/logo.png" class="header-logo" alt="Logo" />
                     ${this.getViewTitle()}
                 </div>
                 <div class="header-actions">
@@ -504,10 +529,10 @@ export class AppHeader extends LitElement {
 
                     ${this.currentView === 'assistant'
                 ? html`
-                              <button @click=${this.onCloseClick} class="icon-button window-close">
+                              <button @click=${this.onCloseClick} class="icon-button window-close session-close-btn">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
-                                      width="24px"
-                                      height="24px"
+                                      width="20px"
+                                      height="20px"
                                       stroke-width="1.7"
                                       viewBox="0 0 24 24"
                                       fill="none"
@@ -522,6 +547,7 @@ export class AppHeader extends LitElement {
                                           stroke-linejoin="round"
                                       ></path>
                                   </svg>
+                                  <span>Close Session</span>
                               </button>
                           `
                 : html`

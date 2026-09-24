@@ -553,14 +553,15 @@ async function normalizeResumeText(rawText, providedApiKey = null) {
         // Use the default text model for normalization
         const modelToUse = currentLlamaModel || GROQ_MODELS['gpt-oss-120b'];
 
-        const systemPrompt = `You are an expert AI recruiter and data extractor.
-Your task is to take a messy, raw resume text dump and normalize it into a highly dense, structured AI-friendly knowledge format.
+        const systemPrompt = `You are an expert AI recruiter and resume analyst.
+Your task is to take a raw resume text dump and normalize it into a structured, highly organized knowledge base for an AI to use during an interview.
 
 RULES:
-- Exclude fluff, soft skills, and generic summaries.
-- Keep ONLY hard facts: Name, roles, tech stacks, years of experience, specific achievements, education.
-- Format as a dense Markdown summary.
-- Keep it under 500 words. Be extremely concise.`;
+- Organize the data into clear sections: Core Skills, Work Experience, Projects, and Education.
+- RETAIN SPECIFIC DETAILS: Keep metrics, specific achievements, project scope, and the actual responsibilities the person had. These are critical for crafting authentic interview answers.
+- Remove generic filler, but KEEP all technical context and business impact.
+- Format as clean Markdown.
+- Keep it dense and AI-friendly, prioritizing facts and stories the candidate can use in behavioral or technical questions.`;
 
         // If raw text is too large (over ~20000 chars), truncate it to avoid token limits
         const safeText = rawText.length > 20000 ? rawText.substring(0, 20000) + '... [TRUNCATED]' : rawText;

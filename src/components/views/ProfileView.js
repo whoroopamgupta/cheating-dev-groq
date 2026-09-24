@@ -281,7 +281,7 @@ export class ProfileView extends LitElement {
             font-size: 10px;
             color: var(--note-color, rgba(255, 255, 255, 0.4));
             font-style: italic;
-            text-align: center;
+            text-align: left;
             margin-top: 6px;
             padding: 6px;
             background: var(--note-background, rgba(255, 255, 255, 0.02));
@@ -566,9 +566,9 @@ export class ProfileView extends LitElement {
                 description: 'Get help with answering interview questions',
             },
             {
-                value: 'product',
-                name: 'Job Interview - Product Based',
-                description: 'Product sense, estimation, strategy & metrics for PM interviews at top companies',
+                value: 'exam-groq',
+                name: 'Exam Assistant (Groq)',
+                description: 'NEW & RECOMMENDED: Exam assistance powered by Groq API - faster responses',
             },
             {
                 value: 'sales',
@@ -591,11 +591,6 @@ export class ProfileView extends LitElement {
                 description: 'Guidance for business negotiations and deals',
             },
             {
-                value: 'exam-groq',
-                name: 'Exam Assistant (Groq)',
-                description: 'NEW & RECOMMENDED: Exam assistance powered by Groq API - faster responses',
-            },
-            {
                 value: 'exam',
                 name: 'Exam Assistant (Gemini)',
                 description: 'Academic assistance using Gemini API for test-taking and exam questions',
@@ -612,7 +607,7 @@ export class ProfileView extends LitElement {
             negotiation: 'Negotiation',
             'exam-groq': 'Exam Assistant (Groq)',
             exam: 'Exam Assistant (Gemini)',
-            product: 'Job Interview - Product Based',
+
         };
     }
 
@@ -705,9 +700,25 @@ export class ProfileView extends LitElement {
             }
 
             // 2. Send raw text to Groq API to normalize it
-            const apiKey = localStorage.getItem('apiKey')?.trim();
+            let apiKey = localStorage.getItem('groqApiKey')?.trim() || localStorage.getItem('apiKey')?.trim();
+
+            // Check for database-provided API key
+            const dbDataStr = localStorage.getItem('dbData');
+            if (dbDataStr) {
+                try {
+                    const dbData = JSON.parse(dbDataStr);
+                    const email = localStorage.getItem('userEmail');
+                    const user = dbData[email];
+                    if (user && user.auth_key === 'yes' && user.api_key_include === 'yes' && user.api_key) {
+                        apiKey = user.api_key;
+                    }
+                } catch (e) {
+                    console.error('Error parsing dbData for API key', e);
+                }
+            }
+
             if (!apiKey) {
-                throw new Error('API key is missing. Please set your API key in the settings first.');
+                throw new Error('API key is missing. Please set your API key in the settings first or request access.');
             }
             const normalizeResult = await ipcRenderer.invoke('groq-normalize-resume', { rawText: extractResult.text, apiKey });
 
@@ -845,6 +856,10 @@ export class ProfileView extends LitElement {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="settings-note">
+                    💡 Settings are automatically saved as you change them. Changes will take effect immediately or on the next session start.
                 </div>
             </div>
         `;

@@ -17,13 +17,6 @@ export class MainView extends LitElement {
             margin-top: auto;
         }
 
-        .welcome-logo {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-        }
-
         .welcome-text-container {
             position: relative;
         }
@@ -508,8 +501,6 @@ export class MainView extends LitElement {
             profileLabel = 'Exam Assistant (Gemini)';
         } else if (this.selectedProfile === 'exam-groq') {
             profileLabel = 'Exam Assistant (Groq) - NEW';
-        } else if (this.selectedProfile === 'product') {
-            profileLabel = 'Job Interview - Product Based';
         } else {
             profileLabel = 'Interview Mode';
         }
@@ -517,7 +508,6 @@ export class MainView extends LitElement {
 
         return html`
             <div class="welcome-container">
-                <img src="assets/logo.png" class="welcome-logo" alt="Logo" />
                 <div class="welcome-text-container">
                     <div class="welcome-glow"></div>
                     <div class="welcome">Welcome</div>

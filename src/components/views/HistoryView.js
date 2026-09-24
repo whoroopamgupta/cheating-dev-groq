@@ -922,27 +922,6 @@ IMPORTANT: Focus on the technical skills and concepts being tested. Help the use
 Keep the summary technical and actionable. Use bullet points where appropriate.`;
         }
 
-        // Product Interview mode prompt
-        if (profile === 'product') {
-            return `You are an expert product management interview analyst. Analyze the following product interview questions and provide a comprehensive summary.
-
-PRODUCT INTERVIEW QUESTIONS:
-${questionsText}
-
-Please provide a summary that includes:
-
-1. **Question Types**: What categories of PM questions were asked? (Product Sense, Estimation, Strategy, Metrics, etc.)
-2. **Key Frameworks Used**: What structured thinking approaches were expected?
-3. **Market/User Focus**: Which user segments or markets were discussed?
-4. **Metrics & KPIs**: What success metrics were relevant to the questions?
-5. **Strategic Decisions**: Key product/business tradeoffs discussed
-6. **Estimation Skills**: Were market sizing or estimation questions asked?
-7. **Company Style**: Does this match any known company's PM interview style?
-
-IMPORTANT: Focus on the structured thinking and product sense being tested. Help the user understand what PM skills they need to strengthen.
-
-Keep the summary strategic and actionable. Use bullet points where appropriate.`;
-        }
 
         // Presentation mode prompt
         if (profile === 'presentation') {
@@ -1175,7 +1154,6 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
     getProfileIcon(profile) {
         if (!profile) return '💬';
         if (profile.includes('interview')) return '💼';
-        if (profile.includes('product')) return '🚀';
         if (profile.includes('sales')) return '📈';
         if (profile.includes('meeting')) return '🤝';
         if (profile.includes('presentation')) return '📊';
@@ -1213,7 +1191,6 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
         const labels = {
             all: 'All Profiles',
             interview: 'Interview Mode',
-            product: 'Product Based',
             sales: 'Sales',
             meeting: 'Meeting',
             presentation: 'Presentation',
@@ -1291,12 +1268,6 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
                                               @click=${e => this.handleCustomFilterSelect(e, 'interview')}
                                           >
                                               Interview Mode
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'product' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'product')}
-                                          >
-                                              Product Based
                                           </div>
                                           <div
                                               class="custom-select-option ${this._profileFilter === 'sales' ? 'selected' : ''}"

@@ -251,7 +251,7 @@ export class HelpView extends LitElement {
 
     constructor() {
         super();
-        this.onExternalLinkClick = () => {};
+        this.onExternalLinkClick = () => { };
         this.keybinds = this.getDefaultKeybinds();
         this.loadKeybinds();
     }
@@ -305,7 +305,7 @@ export class HelpView extends LitElement {
     render() {
         const isMacOS = cheddar.isMacOS || false;
         const isLinux = cheddar.isLinux || false;
-        
+
         let planDetails = "Unknown";
         try {
             const loggedInUserStr = localStorage.getItem('loggedInUser');
@@ -315,7 +315,7 @@ export class HelpView extends LitElement {
                     planDetails = `Valid until ${user.expiry_date}`;
                 }
             }
-        } catch(e) {
+        } catch (e) {
             console.error('Failed to parse user for help view', e);
         }
 
@@ -471,8 +471,8 @@ export class HelpView extends LitElement {
                             <div class="profile-description">Get help with interview questions and responses</div>
                         </div>
                         <div class="profile-item">
-                            <div class="profile-name">Job Interview - Product Based</div>
-                            <div class="profile-description">Product sense, estimation, strategy & metrics for PM interviews</div>
+                            <div class="profile-name">Exam Assistant (Groq) - NEW</div>
+                            <div class="profile-description">Recommended: Fast exam assistance powered by Groq API</div>
                         </div>
                         <div class="profile-item">
                             <div class="profile-name">Sales Call</div>
@@ -490,10 +490,7 @@ export class HelpView extends LitElement {
                             <div class="profile-name">Negotiation</div>
                             <div class="profile-description">Guidance for business negotiations and deals</div>
                         </div>
-                        <div class="profile-item">
-                            <div class="profile-name">Exam Assistant (Groq) - NEW</div>
-                            <div class="profile-description">Recommended: Fast exam assistance powered by Groq API</div>
-                        </div>
+
                         <div class="profile-item">
                             <div class="profile-name">Exam Assistant (Gemini)</div>
                             <div class="profile-description">Academic assistance using Gemini API for test-taking</div>
@@ -515,7 +512,7 @@ export class HelpView extends LitElement {
                     </div>
                 </div>
 
-                <div class="version-info">v1.2.7</div>
+                <div class="version-info">1.2.9</div>
             </div>
         `;
     }

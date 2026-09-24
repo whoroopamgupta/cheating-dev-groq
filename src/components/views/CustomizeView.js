@@ -281,9 +281,9 @@ export class CustomizeView extends LitElement {
             font-size: 10px;
             color: var(--note-color, rgba(255, 255, 255, 0.4));
             font-style: italic;
-            text-align: center;
-            margin-top: 6px;
-            padding: 6px;
+            text-align: left;
+            margin-bottom: 16px;
+            padding: 10px 12px;
             background: var(--note-background, rgba(255, 255, 255, 0.02));
             border-radius: 4px;
             border: 1px solid var(--note-border, rgba(255, 255, 255, 0.08));
@@ -534,9 +534,9 @@ export class CustomizeView extends LitElement {
                 description: 'Get help with answering interview questions',
             },
             {
-                value: 'product',
-                name: 'Job Interview - Product Based',
-                description: 'Product sense, estimation, strategy & metrics for PM interviews at top companies',
+                value: 'exam-groq',
+                name: 'Exam Assistant (Groq)',
+                description: 'NEW & RECOMMENDED: Exam assistance powered by Groq API - faster responses',
             },
             {
                 value: 'sales',
@@ -557,11 +557,6 @@ export class CustomizeView extends LitElement {
                 value: 'negotiation',
                 name: 'Negotiation',
                 description: 'Guidance for business negotiations and deals',
-            },
-            {
-                value: 'exam-groq',
-                name: 'Exam Assistant (Groq)',
-                description: 'NEW & RECOMMENDED: Exam assistance powered by Groq API - faster responses',
             },
             {
                 value: 'exam',
@@ -615,7 +610,7 @@ export class CustomizeView extends LitElement {
             negotiation: 'Negotiation',
             'exam-groq': 'Exam Assistant (Groq)',
             exam: 'Exam Assistant (Gemini)',
-            product: 'Job Interview - Product Based',
+
         };
     }
 
@@ -1199,6 +1194,9 @@ export class CustomizeView extends LitElement {
 
         return html`
             <div class="settings-container">
+                <div class="settings-note">
+                    💡 Settings are automatically saved as you change them. Changes will take effect immediately or on the next session start.
+                </div>
                 <!-- Mode Selection Section (Coding vs Interview) -->
                 <div class="settings-section">
                     <div class="section-title">
@@ -1252,10 +1250,10 @@ export class CustomizeView extends LitElement {
                                           <div class="form-group">
                                               <label class="form-label">Mode (Fixed for ${this.getProfileNames()[this.selectedProfile]})</label>
                                               <div class="mode-display-box">🎤 Interview Mode (Real-time Audio)</div>
-                                              <div class="form-description">
+                                              ${/* <div class="form-description">
                                                   ${this.getProfileNames()[this.selectedProfile]} profile uses Groq Whisper for speech-to-text and
                                                   GPT OSS for response generation.
-                                              </div>
+                                              </div> */ ''}
                                           </div>
                                       </div>
 
@@ -1275,6 +1273,20 @@ export class CustomizeView extends LitElement {
                             label: 'GPT 20B Lightweight (Faster)',
                             icon: './assets/models/openai_logo.png',
                         },
+                        {
+                            value: 'whisper-large-v3',
+                            label: 'Whisper Large V3 (Audio Transcription)',
+                            icon: './assets/models/openai_logo.png',
+                            disabled: true,
+                            alwaysActive: true
+                        },
+                        {
+                            value: 'llama-3.2-11b-vision',
+                            label: 'Llama 3.2 11B Vision (Screen Analysis)',
+                            icon: './assets/models/meta_logo.png',
+                            disabled: true,
+                            alwaysActive: true
+                        }
                     ]}
                                                   @change=${this.handleGroqModelChange}
                                               ></custom-dropdown>
@@ -1315,98 +1327,6 @@ export class CustomizeView extends LitElement {
                         : ''}
                                   `
             }
-                    </div>
-                </div>
-
-                <!-- Audio Section -->
-                <div class="settings-section">
-                    <div class="section-title teal">
-                        <span>Audio</span>
-                    </div>
-                    <div class="form-grid">
-
-                        <div class="form-group full-width">
-                            <div class="checkbox-group">
-                                <input
-                                    type="checkbox"
-                                    class="checkbox-input"
-                                    id="vad-enabled"
-                                    .checked=${this.vadEnabled}
-                                    @change=${this.handleVADChange}
-                                />
-                                <label for="vad-enabled" class="checkbox-label">Enable Voice Activity Detection (VAD)</label>
-                            </div>
-                            <div class="form-description">
-                                Intelligently detect when you're speaking and only capture audio during speech.
-                                Improves privacy by avoiding recording of silence and background noise.
-                                <br /><strong>Benefits:</strong> Better privacy, reduced processing, natural conversation flow
-                            </div>
-                        </div>
-
-                        ${this.selectedProfile === 'interview' && this.vadEnabled
-                ? html`
-                                      <div class="form-row">
-                                          <div class="form-group">
-                                              <label class="form-label">
-                                                  VAD Control Mode
-                                                  <span class="current-selection"
-                                                      >${this.vadMode === 'automatic' ? 'Smart Detection' : 'Manual Control'}</span
-                                                  >
-                                              </label>
-                                              <custom-dropdown
-                                                  .value=${this.vadMode}
-                                                  .options=${[
-                        { value: 'automatic', label: 'Smart Detection (Auto)' },
-                        { value: 'manual', label: 'Manual Control (Push-to-Talk)' },
-                    ]}
-                                                  @change=${this.handleVADModeChange}
-                                              ></custom-dropdown>
-                                          </div>
-                                      </div>
-                                      <div class="form-group full-width">
-                                          <div class="form-description">
-                                              ${this.vadMode === 'automatic'
-                        ? html`<strong>Smart Detection:</strong> VAD automatically detects speech and silence. Best for
-                                                        natural conversations where the interviewer speaks continuously.`
-                        : html`<strong>Manual Control:</strong> Click the microphone button to start listening. VAD captures
-                                                        the entire question (including pauses) until you click again to generate the response. Perfect
-                                                        for interviewers who pause frequently mid-sentence.`}
-                                          </div>
-                                      </div>
-                                  `
-                : ''
-            }
-                    </div>
-                </div>
-
-                <!-- Stealth Profile Section -->
-                <div class="settings-section">
-                    <div class="section-title green">
-                        <span>Stealth Profile</span>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Profile</label>
-                                <custom-dropdown
-                                    .value=${localStorage.getItem('stealthProfile') || 'ultra'}
-                                    .options=${[
-                { value: 'visible', label: 'Visible' },
-                { value: 'balanced', label: 'Balanced' },
-                { value: 'ultra', label: 'Ultra-Stealth' },
-            ]}
-                                    @change=${e => {
-                localStorage.setItem('stealthProfile', e.detail.value);
-                // We need to notify the main process to restart for some settings to apply
-                alert('Restart the application for stealth changes to take full effect.');
-                this.requestUpdate();
-            }}
-                                ></custom-dropdown>
-                                <div class="form-description">
-                                    Adjusts visibility and detection resistance. A restart is required for changes to apply.
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -1630,6 +1550,98 @@ export class CustomizeView extends LitElement {
 
 
 
+                <!-- Audio Section -->
+                <div class="settings-section">
+                    <div class="section-title teal">
+                        <span>Audio</span>
+                    </div>
+                    <div class="form-grid">
+
+                        <div class="form-group full-width">
+                            <div class="checkbox-group">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox-input"
+                                    id="vad-enabled"
+                                    .checked=${this.vadEnabled}
+                                    @change=${this.handleVADChange}
+                                />
+                                <label for="vad-enabled" class="checkbox-label">Enable Voice Activity Detection (VAD)</label>
+                            </div>
+                            <div class="form-description">
+                                Intelligently detect when you're speaking and only capture audio during speech.
+                                Improves privacy by avoiding recording of silence and background noise.
+                                <br /><strong>Benefits:</strong> Better privacy, reduced processing, natural conversation flow
+                            </div>
+                        </div>
+
+                        ${this.selectedProfile === 'interview' && this.vadEnabled
+                ? html`
+                                      <div class="form-row">
+                                          <div class="form-group">
+                                              <label class="form-label">
+                                                  VAD Control Mode
+                                                  <span class="current-selection"
+                                                      >${this.vadMode === 'automatic' ? 'Smart Detection' : 'Manual Control'}</span
+                                                  >
+                                              </label>
+                                              <custom-dropdown
+                                                  .value=${this.vadMode}
+                                                  .options=${[
+                        { value: 'automatic', label: 'Smart Detection (Auto)' },
+                        { value: 'manual', label: 'Manual Control (Push-to-Talk)' },
+                    ]}
+                                                  @change=${this.handleVADModeChange}
+                                              ></custom-dropdown>
+                                          </div>
+                                      </div>
+                                      <div class="form-group full-width">
+                                          <div class="form-description">
+                                              ${this.vadMode === 'automatic'
+                        ? html`<strong>Smart Detection:</strong> VAD automatically detects speech and silence. Best for
+                                                        natural conversations where the interviewer speaks continuously.`
+                        : html`<strong>Manual Control:</strong> Click the microphone button to start listening. VAD captures
+                                                        the entire question (including pauses) until you click again to generate the response. Perfect
+                                                        for interviewers who pause frequently mid-sentence.`}
+                                          </div>
+                                      </div>
+                                  `
+                : ''
+            }
+                    </div>
+                </div>
+
+                <!-- Stealth Profile Section -->
+                <div class="settings-section">
+                    <div class="section-title green">
+                        <span>Stealth Profile</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Profile</label>
+                                <custom-dropdown
+                                    .value=${localStorage.getItem('stealthProfile') || 'ultra'}
+                                    .options=${[
+                { value: 'visible', label: 'Visible' },
+                { value: 'balanced', label: 'Balanced' },
+                { value: 'ultra', label: 'Ultra-Stealth' },
+            ]}
+                                    @change=${e => {
+                localStorage.setItem('stealthProfile', e.detail.value);
+                // We need to notify the main process to restart for some settings to apply
+                alert('Restart the application for stealth changes to take full effect.');
+                this.requestUpdate();
+            }}
+                                ></custom-dropdown>
+                                <div class="form-description">
+                                    Adjusts visibility and detection resistance. A restart is required for changes to apply.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Google Search Section -->
                 <div class="settings-section">
                     <div class="section-title purple">
@@ -1654,10 +1666,7 @@ export class CustomizeView extends LitElement {
                     </div>
                 </div>
 
-                <div class="settings-note">
-                    💡 Settings are automatically saved as you change them. Changes will take effect immediately or on the next session start.
-                </div>
-
+                ${/*
                 <!-- Advanced Mode Section (Danger Zone) -->
                 <div class="settings-section" style="border-color: var(--danger-border, rgba(239, 68, 68, 0.3)); background: var(--danger-background, rgba(239, 68, 68, 0.05));">
                     <div class="section-title red" style="color: var(--danger-color, #ef4444);">
@@ -1682,6 +1691,7 @@ export class CustomizeView extends LitElement {
                         </div>
                     </div>
                 </div>
+                */ ''}
             </div>
         `;
     }
