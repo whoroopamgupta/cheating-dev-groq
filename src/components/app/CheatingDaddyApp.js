@@ -480,6 +480,7 @@ export class CheatingDaddyApp extends LitElement {
 
         // Validation interval reference (will be set in connectedCallback)
         this._validationIntervalId = null;
+        this._heartbeatIntervalId = null;
 
         this.toastMessage = '';
         this.showToastFlag = false;
@@ -548,6 +549,24 @@ export class CheatingDaddyApp extends LitElement {
                 this.toastTimeout = null;
             }, 2600);
         }, 10);
+
+        // Start device session heartbeat (every 2 minutes)
+        this._heartbeatIntervalId = setInterval(() => {
+            const loggedInUserStr = localStorage.getItem('loggedInUser');
+            if (loggedInUserStr && window.require) {
+                try {
+                    const user = JSON.parse(loggedInUserStr);
+                    if (user && user.id) {
+                        const { ipcRenderer } = window.require('electron');
+                        ipcRenderer.invoke('heartbeat-device-session', { subscriberId: user.id }).catch(err => {
+                            console.error('[Heartbeat] Failed:', err);
+                        });
+                    }
+                } catch (e) {
+                    console.error('[Heartbeat] Error processing heartbeat:', e);
+                }
+            }
+        }, 2 * 60 * 1000);
     }
 
     disconnectedCallback() {
@@ -569,6 +588,12 @@ export class CheatingDaddyApp extends LitElement {
         if (this._validationIntervalId) {
             clearInterval(this._validationIntervalId);
             this._validationIntervalId = null;
+        }
+
+        // Clear the heartbeat interval
+        if (this._heartbeatIntervalId) {
+            clearInterval(this._heartbeatIntervalId);
+            this._heartbeatIntervalId = null;
         }
     }
 
@@ -1043,7 +1068,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                     const user = JSON.parse(loggedInUserStr);
                     if ((user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
                         isApiKeyIncluded = true;
-                        dbApiKey = user.api_key;
+                        dbApiKey = user.api_key.trim();
                     }
                 } catch (e) {
                     console.error('[CheatingDaddyApp] Error parsing user data for API key:', e);

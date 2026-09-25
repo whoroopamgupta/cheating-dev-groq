@@ -1031,7 +1031,7 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
                 try {
                     const user = JSON.parse(loggedInUserStr);
                     if ((user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
-                        groqApiKey = user.api_key;
+                        groqApiKey = user.api_key.trim();
                     }
                 } catch (e) {}
             }

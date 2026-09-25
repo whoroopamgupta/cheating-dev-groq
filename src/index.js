@@ -65,7 +65,7 @@ const { applyAntiAnalysisMeasures } = require('./utils/stealthFeatures');
 const { getLocalConfig, writeConfig } = require('./config');
 const { extractTextFromFile } = require('./utils/documentProcessor');
 const { getDeviceId, getDeviceName } = require('./utils/deviceId');
-const { checkAndRegisterDevice, deactivateDeviceSession } = require('./utils/deviceSession');
+const { checkAndRegisterDevice, deactivateDeviceSession, updateLastActive } = require('./utils/deviceSession');
 const path = require('path');
 const os = require('os');
 
@@ -350,5 +350,20 @@ function setupGeneralIpcHandlers() {
             console.error('[MAIN] Device session deactivation error:', error);
             return { success: false, error: error.message };
         }
+    });
+
+    ipcMain.handle('heartbeat-device-session', async (event, { subscriberId }) => {
+        try {
+            const deviceId = getDeviceId();
+            const result = await updateLastActive(subscriberId, deviceId);
+            return result;
+        } catch (error) {
+            console.error('[MAIN] Device session heartbeat error:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('get-device-id', async () => {
+        return getDeviceId();
     });
 }

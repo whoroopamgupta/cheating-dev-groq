@@ -708,7 +708,7 @@ export class ProfileView extends LitElement {
                 try {
                     const user = JSON.parse(loggedInUserStr);
                     if (user && (user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
-                        apiKey = user.api_key;
+                        apiKey = user.api_key.trim();
                     }
                 } catch (e) {
                     console.error('Error parsing loggedInUser for API key', e);

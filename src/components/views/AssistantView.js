@@ -381,21 +381,71 @@ export class AssistantView extends LitElement {
         }
 
         .response-container table {
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             width: 100%;
-            margin: 1em 0;
+            margin: 1.5em 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border-color);
         }
 
         .response-container th,
         .response-container td {
-            border: 1px solid var(--border-color);
-            padding: 0.5em;
+            padding: 12px 16px;
             text-align: left;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .response-container th {
-            background: var(--input-background);
+            background: rgba(255, 255, 255, 0.05);
             font-weight: 600;
+            color: var(--text-color);
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.05em;
+        }
+
+        .response-container tr:last-child td {
+            border-bottom: none;
+        }
+
+        .response-container tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .response-container tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 250px;
+            color: var(--text-color);
+            animation: pulse-slow 3s infinite ease-in-out;
+        }
+
+        .empty-state-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            color: var(--text-color);
+        }
+
+        .empty-state-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.3; transform: scale(0.98); }
+            50% { opacity: 0.7; transform: scale(1.02); }
         }
 
         .response-container::-webkit-scrollbar {
@@ -1251,10 +1301,24 @@ export class AssistantView extends LitElement {
             const currentResponse = this.getCurrentResponse();
             console.log('Current response length:', currentResponse.length);
 
-            // Skip animation entirely - just render the final markdown
-            // This prevents markdown breaking and re-streaming issues
-            const renderedResponse = this.renderMarkdown(currentResponse);
-            container.innerHTML = renderedResponse;
+            // Handle empty state gracefully with a sleek UI
+            if (!currentResponse || currentResponse.trim() === '') {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="22"></line>
+                        </svg>
+                        <div class="empty-state-text">Listening to conversation...</div>
+                    </div>
+                `;
+            } else {
+                // Skip animation entirely - just render the final markdown
+                // This prevents markdown breaking and re-streaming issues
+                const renderedResponse = this.renderMarkdown(currentResponse);
+                container.innerHTML = renderedResponse;
+            }
 
             // Make all words visible immediately (no animation)
             const words = container.querySelectorAll('[data-word]');
