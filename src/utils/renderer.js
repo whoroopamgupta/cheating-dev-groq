@@ -795,6 +795,25 @@ async function captureManualScreenshot(imageQuality = null) {
     }
 }
 
+let lastGroqImageData = null;
+
+function hasImageChanged(oldData, newData, threshold = 0.02) {
+    if (!oldData) return true;
+    let diffCount = 0;
+    const len = newData.data.length;
+    // Sample pixels for performance (check every 4th pixel = step of 16 in ImageData)
+    for (let i = 0; i < len; i += 16) {
+        // Compare RGB values, ignore alpha
+        if (Math.abs(newData.data[i] - oldData.data[i]) > 15 ||
+            Math.abs(newData.data[i+1] - oldData.data[i+1]) > 15 ||
+            Math.abs(newData.data[i+2] - oldData.data[i+2]) > 15) {
+            diffCount++;
+        }
+    }
+    const diffRatio = diffCount / (len / 16);
+    return diffRatio > threshold;
+}
+
 // Capture screenshot and send to Groq Llama for interview mode
 async function captureScreenshotForGroq(imageQuality = 'medium') {
     console.log('[GROQ] Capturing screenshot for Llama analysis...');
@@ -824,6 +843,29 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
     }
 
     offscreenContext.drawImage(hiddenVideo, 0, 0);
+
+    // Grab current image data to compare with the last frame
+    const currentImageData = offscreenContext.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    
+    // Check if we're in auto-capture mode (exam-groq)
+    const isAutoCapture = localStorage.getItem('examGroqAutoCapture') === 'true';
+    const selectedMode = localStorage.getItem('selectedMode');
+    
+    // If it's an auto-captured frame and the image hasn't meaningfully changed, skip it
+    if (isAutoCapture && selectedMode === 'interview') {
+        if (!hasImageChanged(lastGroqImageData, currentImageData, 0.015)) {
+            console.log('[GROQ] Screen has not changed significantly. Skipping auto-analysis to prevent hallucinations.');
+            return;
+        } else {
+            // Screen HAS changed significantly (new question/page)! 
+            // Clear the LLM history so it analyzes the new question with a fresh, unpolluted context.
+            console.log('[GROQ] Screen changed! Clearing history for fresh analysis.');
+            ipcRenderer.invoke('groq-clear-history').catch(e => console.error(e));
+        }
+    }
+    
+    // Update last image data
+    lastGroqImageData = currentImageData;
 
     // Get quality value
     let qualityValue;
@@ -863,7 +905,7 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
                 try {
                     const result = await ipcRenderer.invoke('groq-generate-response', {
                         message:
-                            'Analyze this screenshot and answer the question/problem shown. CRITICAL CHAT RULE: If the screenshot shows a chat window (Google Meet, Zoom, Microsoft Teams, Slack, or any messaging interface), focus ONLY on the LATEST/MOST RECENT message or question visible at the BOTTOM of the chat. Ignore older messages above it. The newest question is always at the bottom of the chat — that is the one you must answer. CRITICAL CODING RULE: If it shows code or a coding problem, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor (C++, Java, Python, JavaScript, etc.) and provide your solution ONLY in that detected language. DO NOT default to Python or any other language - use EXACTLY what is shown on screen. Preserve the exact function signature if visible. If it shows an interview question, provide a natural, conversational answer.',
+                            'Analyze this screenshot and accurately answer the question/problem shown. CRITICAL ACCURACY RULE: You must read the question and every single option very carefully. Think step-by-step to arrive at the absolutely correct answer. NEVER guess. Double-check your logic. CRITICAL CHAT RULE: If the screenshot shows a chat window (Google Meet, Zoom, Teams), focus ONLY on the LATEST message visible at the BOTTOM. CRITICAL CODING RULE: If it shows code, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor and provide your solution ONLY in that language. Preserve the exact function signature.',
                         imageBase64: base64data,
                     });
 

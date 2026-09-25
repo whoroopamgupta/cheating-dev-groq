@@ -686,21 +686,15 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         const payload = {
             model: modelToUse,
             messages: messages,
-            temperature: 0.7,
+            temperature: isVisionRequest ? 0.1 : 0.6, // Enforce strict logic for exams, allow slight creativity for voice
             max_tokens: 4096,
-            stream: true, // Enable streaming for faster perceived response
+            stream: true, 
         };
 
-        // Groq reasoning models (Qwen 3.8-27b and GPT OSS series) output thinking tokens.
+        // Groq reasoning models output thinking tokens.
         // We set reasoning_format to 'hidden' to prevent these from streaming to the UI.
         if (modelToUse === 'qwen/qwen3.8-27b' || modelToUse.includes('gpt-oss-')) {
             payload.reasoning_format = 'hidden';
-        }
-
-        // Disable reasoning for the vision model to achieve instant responses (~300ms)
-        // and prevent rate-limit queue stacking during auto-capture.
-        if (modelToUse === 'qwen/qwen3.8-27b') {
-            payload.reasoning_effort = 'none';
         }
 
         const requestBody = JSON.stringify(payload);
