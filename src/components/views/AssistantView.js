@@ -6,6 +6,8 @@ export class AssistantView extends LitElement {
             height: 100%;
             display: flex;
             flex-direction: column;
+            min-width: 0;
+            overflow-x: hidden;
         }
 
         * {
@@ -16,6 +18,7 @@ export class AssistantView extends LitElement {
         .response-container {
             height: calc(100% - 60px);
             overflow-y: auto;
+            overflow-x: hidden;
             border-radius: 10px;
             font-size: var(--response-font-size, 18px);
             line-height: 1.6;
@@ -23,6 +26,10 @@ export class AssistantView extends LitElement {
             padding: 16px;
             scroll-behavior: smooth;
             user-select: text;
+            min-width: 0;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
         }
 
         /* Allow text selection for all content within the response container */
@@ -83,6 +90,8 @@ export class AssistantView extends LitElement {
         .response-container p {
             margin: 0.8em 0;
             color: var(--text-color);
+            overflow-wrap: break-word;
+            word-wrap: break-word;
         }
 
         .response-container ul,
@@ -110,6 +119,8 @@ export class AssistantView extends LitElement {
             border-radius: 3px;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 0.85em;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .response-container pre {
@@ -352,6 +363,8 @@ export class AssistantView extends LitElement {
             font-weight: 500;
             padding: 0.15em 0.3em;
             border-radius: 3px;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .response-container a {
@@ -384,11 +397,27 @@ export class AssistantView extends LitElement {
             border-collapse: separate;
             border-spacing: 0;
             width: 100%;
+            max-width: 100%;
             margin: 1.5em 0;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             border: 1px solid var(--border-color);
+            display: block;
+            overflow-x: auto;
+        }
+
+        .response-container thead,
+        .response-container tbody,
+        .response-container tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .response-container img {
+            max-width: 100%;
+            height: auto;
         }
 
         .response-container th,
@@ -396,6 +425,8 @@ export class AssistantView extends LitElement {
             padding: 12px 16px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
+            overflow-wrap: break-word;
+            word-wrap: break-word;
         }
 
         .response-container th {
@@ -471,13 +502,15 @@ export class AssistantView extends LitElement {
 
         .text-input-container {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             margin-top: 10px;
             align-items: center;
+            min-width: 0;
         }
 
         .text-input-container input {
-            flex: 1;
+            flex: 1 1 0%;
+            min-width: 0;
             background: var(--input-background);
             color: var(--text-color);
             border: 1px solid var(--button-border);
@@ -519,8 +552,10 @@ export class AssistantView extends LitElement {
             display: flex;
             align-items: center;
             width: 36px;
+            min-width: 36px;
             height: 36px;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .nav-button:hover {
@@ -539,8 +574,9 @@ export class AssistantView extends LitElement {
             font-size: 12px;
             color: var(--description-color);
             white-space: nowrap;
-            min-width: 60px;
+            min-width: 40px;
             text-align: center;
+            flex-shrink: 0;
         }
 
         .save-button {
@@ -575,6 +611,7 @@ export class AssistantView extends LitElement {
             border: 2px solid var(--button-border);
             border-radius: 50%;
             width: 36px;
+            min-width: 36px;
             height: 36px;
             display: flex;
             align-items: center;
@@ -582,6 +619,7 @@ export class AssistantView extends LitElement {
             cursor: default;
             transition: all 0.2s ease;
             position: relative;
+            flex-shrink: 0;
         }
 
         .mic-toggle-button.active {
@@ -623,11 +661,14 @@ export class AssistantView extends LitElement {
             align-items: center;
             margin-bottom: 8px;
             gap: 6px;
+            min-width: 0;
+            flex-wrap: wrap;
         }
 
         .follow-up-bubbles {
             display: flex;
-            flex: 1;
+            flex: 1 1 0%;
+            min-width: 0;
             gap: 5px;
             overflow-x: auto;
             scrollbar-width: none;
