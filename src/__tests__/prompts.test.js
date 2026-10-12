@@ -112,7 +112,7 @@ describe('Prompt System Tests', () => {
             const interviewPrompt = profilePrompts.interview.formatRequirements;
 
             expect(interviewPrompt).toContain('CONCISE');
-            expect(interviewPrompt).toContain('2-4 sentences');
+            expect(interviewPrompt).toContain('3-5 SENTENCES');
             expect(interviewPrompt).toContain('conversational');
         });
 

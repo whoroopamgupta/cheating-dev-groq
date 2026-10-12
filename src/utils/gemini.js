@@ -1102,7 +1102,16 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
     ipcMain.handle(
         'initialize-gemini',
-        async (event, apiKey, customPrompt, profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash', resumeContext = '') => {
+        async (
+            event,
+            apiKey,
+            customPrompt,
+            profile = 'interview',
+            language = 'en-US',
+            mode = 'interview',
+            model = 'gemini-2.5-flash',
+            resumeContext = ''
+        ) => {
             try {
                 const session = await initializeGeminiSession(apiKey, customPrompt, profile, language, false, mode, model, resumeContext);
                 if (session) {
@@ -1181,7 +1190,7 @@ function setupGeminiIpcHandlers(geminiSessionRef) {
 
                 // Send contextual prompt that analyzes the screenshot content
                 await geminiSessionRef.current.sendRealtimeInput({
-                    text: "Based on this screenshot: CRITICAL CHAT RULE: If you see a chat window (Google Meet, Zoom, Microsoft Teams, Slack, or any messaging interface), focus ONLY on the LATEST/MOST RECENT message or question visible at the BOTTOM of the chat. Ignore older messages above it. The newest question is always at the bottom — answer ONLY that one. If you see a CODING PROBLEM (LeetCode, HackerRank, CodeSignal, etc. with a code editor), CRITICAL: DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor (C++, Java, Python, JavaScript, TypeScript, Go, Rust, etc.) and provide the COMPLETE CODE SOLUTION in THAT EXACT LANGUAGE ONLY. DO NOT default to Python or any other language - use EXACTLY the language shown on screen. Use the EXACT function signature visible (same class name, method name, parameter count/types/names, return type). DO NOT modify the signature or language. DO NOT search online for similar problems. Format: [1-line approach] + [clean code block without comments in the DETECTED LANGUAGE using EXACT signature] + [complexity] + [algorithm explanation with 2-4 brief bullet points so I can explain the approach to the interviewer]. If it's an APTITUDE/MCQ/REASONING question, answer directly and concisely in 2-3 sentences - DO NOT say 'This is a word problem' or 'not a coding question', just give the answer. If it's a regular interview question, answer briefly (2-3 sentences). If it's just code to review, explain what it does. If unclear, describe what you see.",
+                    text: "Based on this screenshot: CRITICAL CHAT RULE: If you see a chat window (Google Meet, Zoom, Microsoft Teams, Slack, or any messaging interface), focus ONLY on the LATEST/MOST RECENT message or question visible at the BOTTOM of the chat. Ignore older messages above it. The newest question is always at the bottom — answer ONLY that one. If you see a CODING PROBLEM (LeetCode, HackerRank, CodeSignal, etc. with a code editor), CRITICAL: DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor (C++, Java, Python, JavaScript, TypeScript, Go, Rust, etc.) and provide the COMPLETE CODE SOLUTION in THAT EXACT LANGUAGE ONLY. DO NOT default to Python or any other language - use EXACTLY the language shown on screen. Use the EXACT function signature visible (same class name, method name, parameter count/types/names, return type). DO NOT modify the signature or language. DO NOT search online for similar problems. Format: [1-line approach] + [clean code block without comments in the DETECTED LANGUAGE using EXACT signature] + [complexity] + [algorithm explanation with 2-4 brief bullet points so I can explain the approach to the interviewer]. If it's an APTITUDE/MCQ/REASONING question, answer directly and concisely - DO NOT say 'This is a word problem' or 'not a coding question', just give the answer. If it's a regular interview question, answer in 3-5 focused sentences. If it's just code to review, explain what it does. If unclear, describe what you see.",
                 });
             } else {
                 // Either exam mode OR automated screenshots in interview mode:
