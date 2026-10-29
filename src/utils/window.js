@@ -169,15 +169,16 @@ function createWindow(sendToRenderer, geminiSessionRef, randomNames = null) {
             mainWindow.webContents
                 .executeJavaScript(
                     `
-                try {
-                    const savedKeybinds = localStorage.getItem('customKeybinds');
-                    
-                    return {
-                        keybinds: savedKeybinds ? JSON.parse(savedKeybinds) : null
-                    };
-                } catch (e) {
-                    return { keybinds: null };
-                }
+                (() => {
+                    try {
+                        const savedKeybinds = localStorage.getItem('customKeybinds');
+                        return {
+                            keybinds: savedKeybinds ? JSON.parse(savedKeybinds) : null
+                        };
+                    } catch (e) {
+                        return { keybinds: null };
+                    }
+                })()
             `
                 )
                 .then(async savedSettings => {
