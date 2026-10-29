@@ -87,6 +87,47 @@ function createMainWindow() {
     return mainWindow;
 }
 
+// Ensure macOS helper binaries have proper execution permissions and strip quarantine
+function ensureMacOSBinaryPermissions() {
+    if (process.platform !== 'darwin') return;
+    try {
+        const fs = require('fs');
+        const { execSync } = require('child_process');
+
+        const helperAppDir = app.isPackaged ? path.join(process.resourcesPath, 'AudioHelper.app') : path.join(__dirname, 'assets', 'AudioHelper.app');
+        const helperBinary = path.join(helperAppDir, 'Contents', 'MacOS', 'SystemAudioDump');
+        const legacyBinary = app.isPackaged ? path.join(process.resourcesPath, 'SystemAudioDump') : path.join(__dirname, 'assets', 'SystemAudioDump');
+
+        if (fs.existsSync(helperBinary)) {
+            try {
+                fs.chmodSync(helperBinary, 0o755);
+                console.log('[macOS] Verified 0755 execute permissions for AudioHelper');
+            } catch (chmodErr) {
+                console.warn('[macOS] Failed to chmod AudioHelper:', chmodErr.message);
+            }
+
+            try {
+                execSync(`xattr -rd com.apple.quarantine "${helperAppDir}" 2>/dev/null`, { stdio: 'ignore' });
+            } catch (_) {}
+        }
+
+        if (fs.existsSync(legacyBinary)) {
+            try {
+                fs.chmodSync(legacyBinary, 0o755);
+                console.log('[macOS] Verified 0755 execute permissions for SystemAudioDump');
+            } catch (chmodErr) {
+                console.warn('[macOS] Failed to chmod SystemAudioDump:', chmodErr.message);
+            }
+
+            try {
+                execSync(`xattr -d com.apple.quarantine "${legacyBinary}" 2>/dev/null`, { stdio: 'ignore' });
+            } catch (_) {}
+        }
+    } catch (err) {
+        console.warn('[macOS] Failed to verify audio helper permissions:', err.message);
+    }
+}
+
 // Single instance lock - prevent multiple instances of the app
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -114,6 +155,7 @@ if (!gotTheLock) {
         if (process.platform === 'darwin') {
             app.dock.hide();
             console.log('Dock icon hidden on macOS');
+            ensureMacOSBinaryPermissions();
         }
 
         createMainWindow();
@@ -250,6 +292,19 @@ function setupGeneralIpcHandlers() {
             console.error('Error opening external URL:', error);
             return { success: false, error: error.message };
         }
+    });
+
+    ipcMain.handle('open-screen-recording-settings', async () => {
+        if (process.platform === 'darwin') {
+            try {
+                await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+                return { success: true };
+            } catch (err) {
+                console.error('Error opening screen recording settings:', err);
+                return { success: false, error: err.message };
+            }
+        }
+        return { success: false, error: 'Not macOS' };
     });
 
     ipcMain.on('update-keybinds', (event, newKeybinds) => {

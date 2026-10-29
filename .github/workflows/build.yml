@@ -63,8 +63,10 @@ jobs:
             - name: Run tests
               run: npm test
 
-            - name: Set executable permissions for SystemAudioDump
-              run: chmod +x src/assets/SystemAudioDump
+            - name: Set executable permissions for audio helper binaries
+              run: |
+                  chmod +x src/assets/SystemAudioDump
+                  chmod +x src/assets/AudioHelper.app/Contents/MacOS/SystemAudioDump
 
             - name: Build Electron app
               run: npm run make
@@ -75,7 +77,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: hd-audio-process-macos
-                  path: out/make/*.dmg
+                  path: out/make/**/*.dmg
                   if-no-files-found: error
 
     build-linux:
@@ -111,4 +113,3 @@ jobs:
                   name: hd-audio-process-linux
                   path: out/make/*.AppImage
                   if-no-files-found: error
-

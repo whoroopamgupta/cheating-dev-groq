@@ -833,19 +833,44 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
 
     // Store Groq mode setting
     macUseGroqForSTT = useGroqForSTT;
-    console.log(`Starting macOS audio capture with SystemAudioDump... (useGroq: ${macUseGroqForSTT})`);
+    console.log(`Starting macOS audio capture with AudioHelper... (useGroq: ${macUseGroqForSTT})`);
 
     const { app } = require('electron');
     const path = require('path');
+    const fs = require('fs');
+    const { execSync } = require('child_process');
 
-    let systemAudioPath;
-    if (app.isPackaged) {
-        systemAudioPath = path.join(process.resourcesPath, 'SystemAudioDump');
-    } else {
-        systemAudioPath = path.join(__dirname, '../assets', 'SystemAudioDump');
+    const helperAppDir = app.isPackaged ? path.join(process.resourcesPath, 'AudioHelper.app') : path.join(__dirname, '../assets', 'AudioHelper.app');
+    const helperAppBinary = path.join(helperAppDir, 'Contents', 'MacOS', 'SystemAudioDump');
+    const legacyPath = app.isPackaged ? path.join(process.resourcesPath, 'SystemAudioDump') : path.join(__dirname, '../assets', 'SystemAudioDump');
+
+    // Prefer AudioHelper.app bundle so macOS registers it automatically in Screen Recording settings
+    let systemAudioPath = fs.existsSync(helperAppBinary) ? helperAppBinary : legacyPath;
+
+    console.log('Audio capture binary path:', systemAudioPath);
+
+    // Auto-fix permissions and strip quarantine for AudioHelper / SystemAudioDump on macOS
+    if (process.platform === 'darwin') {
+        try {
+            if (fs.existsSync(systemAudioPath)) {
+                // Ensure executable permissions (0o755 = rwxr-xr-x)
+                fs.chmodSync(systemAudioPath, 0o755);
+                console.log('Verified execute permissions (0755) for audio capture binary');
+
+                // Strip quarantine attribute if present
+                try {
+                    if (fs.existsSync(helperAppDir)) {
+                        execSync(`xattr -rd com.apple.quarantine "${helperAppDir}" 2>/dev/null`, { stdio: 'ignore' });
+                    }
+                    execSync(`xattr -d com.apple.quarantine "${systemAudioPath}" 2>/dev/null`, { stdio: 'ignore' });
+                } catch (_) {
+                    // Ignore if quarantine attribute is not present
+                }
+            }
+        } catch (permError) {
+            console.warn('Auto-chmod for audio capture binary encountered an issue:', permError.message);
+        }
     }
-
-    console.log('SystemAudioDump path:', systemAudioPath);
 
     // Spawn SystemAudioDump with stealth options
     const spawnOptions = {

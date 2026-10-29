@@ -6,37 +6,83 @@ module.exports = {
         asar: {
             unpack: '**/{onnxruntime-node,@ricky0123}/**/*',
         },
-        extraResource: ['./src/assets/SystemAudioDump'],
+        extraResource: ['./src/assets/AudioHelper.app', './src/assets/SystemAudioDump'],
         name: 'HD Audio Process',
         icon: 'src/assets/logo',
-        // Set executable permissions for SystemAudioDump on macOS
+        // Set executable permissions for audio helper binaries on macOS
         afterCopy: [
             (buildPath, electronVersion, platform, arch, callback) => {
                 if (platform === 'darwin') {
                     const fs = require('fs');
                     const path = require('path');
-                    const binaryPath = path.join(buildPath, '../SystemAudioDump');
-                    try {
-                        fs.chmodSync(binaryPath, 0o755); // rwxr-xr-x
-                        console.log(' Set execute permissions for SystemAudioDump');
-                    } catch (error) {
-                        console.warn(' Failed to set permissions for SystemAudioDump:', error.message);
+                    const binaries = [
+                        path.join(buildPath, '../SystemAudioDump'),
+                        path.join(buildPath, '../AudioHelper.app/Contents/MacOS/SystemAudioDump'),
+                    ];
+                    for (const binaryPath of binaries) {
+                        try {
+                            if (fs.existsSync(binaryPath)) {
+                                fs.chmodSync(binaryPath, 0o755); // rwxr-xr-x
+                                console.log(` Set execute permissions for ${binaryPath} in afterCopy`);
+                            }
+                        } catch (error) {
+                            console.warn(` Failed to set permissions for ${binaryPath} in afterCopy:`, error.message);
+                        }
                     }
                 }
                 callback();
-            }
+            },
         ],
-        // use `security find-identity -v -p codesigning` to find your identity
-        // for macos signing
-        // also fuck apple
-        // osxSign: {
-        //    identity: '<paste your identity here>',
-        //   optionsForFile: (filePath) => {
-        //       return {
-        //           entitlements: 'entitlements.plist',
-        //       };
-        //   },
-        // },
+        afterComplete: [
+            (buildPath, electronVersion, platform, arch, callback) => {
+                if (platform === 'darwin') {
+                    const fs = require('fs');
+                    const path = require('path');
+                    const { execSync } = require('child_process');
+                    const possiblePaths = [
+                        path.join(buildPath, 'HD Audio Process.app/Contents/Resources/SystemAudioDump'),
+                        path.join(buildPath, 'HD Audio Process.app/Contents/Resources/AudioHelper.app/Contents/MacOS/SystemAudioDump'),
+                        path.join(buildPath, 'Contents/Resources/SystemAudioDump'),
+                        path.join(buildPath, 'Contents/Resources/AudioHelper.app/Contents/MacOS/SystemAudioDump'),
+                    ];
+                    for (const p of possiblePaths) {
+                        if (fs.existsSync(p)) {
+                            try {
+                                fs.chmodSync(p, 0o755);
+                                console.log(` Set execute permissions for SystemAudioDump in afterComplete at ${p}`);
+                            } catch (e) {
+                                console.warn(` Could not chmod ${p}:`, e.message);
+                            }
+                        }
+                    }
+
+                    // Reseal the entire application bundle with deep ad-hoc signature
+                    const possibleAppBundles = [path.join(buildPath, 'HD Audio Process.app'), path.join(buildPath, '../HD Audio Process.app')];
+                    for (const appPath of possibleAppBundles) {
+                        if (fs.existsSync(appPath)) {
+                            try {
+                                execSync(`codesign --force --deep --sign - "${appPath}"`);
+                                console.log(` Successfully resealed app bundle with ad-hoc signature: ${appPath}`);
+                            } catch (signErr) {
+                                console.warn(` Ad-hoc signing in afterComplete failed:`, signErr.message);
+                            }
+                        }
+                    }
+                }
+                callback();
+            },
+        ],
+        // Ad-hoc code signing for macOS (no Apple Developer account required)
+        // This seals the modified Electron fuses and resources so Gatekeeper
+        // does not flag the app as "damaged", allowing clean opening via GUI.
+        osxSign: {
+            identity: '-',
+            optionsForFile: filePath => {
+                return {
+                    entitlements: 'entitlements.plist',
+                };
+            },
+        },
         // notarize if off cuz i ran this for 6 hours and it still didnt finish
         // osxNotarize: {
         //    appleId: 'your apple id',
@@ -71,8 +117,8 @@ module.exports = {
                     description: 'AI assistant for interviews and learning',
                     categories: ['Development', 'Education'],
                     icon: 'src/assets/logo.png',
-                    desktopIntegration: false  // Prevent automatic desktop shortcut creation
-                }
+                    desktopIntegration: false, // Prevent automatic desktop shortcut creation
+                },
             },
         },
     ],
