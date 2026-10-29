@@ -166,8 +166,8 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
-async function initializeGemini(profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash') {
-    const apiKey = localStorage.getItem('apiKey')?.trim();
+async function initializeGemini(profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash', providedApiKey = null) {
+    const apiKey = (providedApiKey || localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey'))?.trim();
     if (apiKey) {
         // Get mode and model from localStorage if not provided
         const selectedMode = mode || localStorage.getItem('selectedMode') || 'interview';
@@ -251,7 +251,7 @@ ipcRenderer.on('groq-transcription', async (event, transcription) => {
     const lowerTranscript = cleanTranscription.toLowerCase();
     const screenIntentRegex = /(solve|look at|read|explain|analyze|check)\s+(this|the|that)?\s*(question|problem|code|screen|snippet|function)/i;
     const directScreenMention = /on (the )?screen/i;
-    
+
     if (screenIntentRegex.test(lowerTranscript) || directScreenMention.test(lowerTranscript)) {
         console.log('[GROQ] Auto-detected screen analysis intent from transcription:', cleanTranscription);
         cheddar.setStatus('Auto-scanning screen...');
@@ -804,9 +804,11 @@ function hasImageChanged(oldData, newData, threshold = 0.02) {
     // Sample pixels for performance (check every 4th pixel = step of 16 in ImageData)
     for (let i = 0; i < len; i += 16) {
         // Compare RGB values, ignore alpha
-        if (Math.abs(newData.data[i] - oldData.data[i]) > 15 ||
-            Math.abs(newData.data[i+1] - oldData.data[i+1]) > 15 ||
-            Math.abs(newData.data[i+2] - oldData.data[i+2]) > 15) {
+        if (
+            Math.abs(newData.data[i] - oldData.data[i]) > 15 ||
+            Math.abs(newData.data[i + 1] - oldData.data[i + 1]) > 15 ||
+            Math.abs(newData.data[i + 2] - oldData.data[i + 2]) > 15
+        ) {
             diffCount++;
         }
     }
@@ -846,24 +848,24 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
 
     // Grab current image data to compare with the last frame
     const currentImageData = offscreenContext.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-    
+
     // Check if we're in auto-capture mode (exam-groq)
     const isAutoCapture = localStorage.getItem('examGroqAutoCapture') === 'true';
     const selectedMode = localStorage.getItem('selectedMode');
-    
+
     // If it's an auto-captured frame and the image hasn't meaningfully changed, skip it
     if (isAutoCapture && selectedMode === 'interview') {
         if (!hasImageChanged(lastGroqImageData, currentImageData, 0.015)) {
             console.log('[GROQ] Screen has not changed significantly. Skipping auto-analysis to prevent hallucinations.');
             return;
         } else {
-            // Screen HAS changed significantly (new question/page)! 
+            // Screen HAS changed significantly (new question/page)!
             // Clear the LLM history so it analyzes the new question with a fresh, unpolluted context.
             console.log('[GROQ] Screen changed! Clearing history for fresh analysis.');
             ipcRenderer.invoke('groq-clear-history').catch(e => console.error(e));
         }
     }
-    
+
     // Update last image data
     lastGroqImageData = currentImageData;
 

@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { isPlanExpired } from '../../utils/dateUtils.js';
+import { getActiveApiKey, isApiKeyIncluded, clearCachedApiKeys } from '../../utils/apiKeyResolver.js';
 import { AppHeader } from './AppHeader.js';
 import { MainView } from '../views/MainView.js';
 import { CustomizeView } from '../views/CustomizeView.js';
@@ -529,6 +530,41 @@ export class CheatingDaddyApp extends LitElement {
             this.validateUserInBackground();
         }
 
+        // Start background validation interval (every 5 minutes)
+        if (!this._validationIntervalId) {
+            this._validationIntervalId = setInterval(
+                () => {
+                    if (this.currentView !== 'login') {
+                        this.validateUserInBackground();
+                    }
+                },
+                5 * 60 * 1000
+            );
+        }
+
+        // Start device session heartbeat (every 2 minutes)
+        if (!this._heartbeatIntervalId) {
+            this._heartbeatIntervalId = setInterval(
+                () => {
+                    const loggedInUserStr = localStorage.getItem('loggedInUser');
+                    if (loggedInUserStr && window.require) {
+                        try {
+                            const user = JSON.parse(loggedInUserStr);
+                            if (user && user.id) {
+                                const { ipcRenderer } = window.require('electron');
+                                ipcRenderer.invoke('heartbeat-device-session', { subscriberId: user.id }).catch(err => {
+                                    console.error('[Heartbeat] Failed:', err);
+                                });
+                            }
+                        } catch (e) {
+                            console.error('[Heartbeat] Error processing heartbeat:', e);
+                        }
+                    }
+                },
+                2 * 60 * 1000
+            );
+        }
+
         window.addEventListener('show-toast', e => this.showToast(e.detail));
     }
 
@@ -551,24 +587,6 @@ export class CheatingDaddyApp extends LitElement {
                 this.toastTimeout = null;
             }, 2600);
         }, 10);
-
-        // Start device session heartbeat (every 2 minutes)
-        this._heartbeatIntervalId = setInterval(() => {
-            const loggedInUserStr = localStorage.getItem('loggedInUser');
-            if (loggedInUserStr && window.require) {
-                try {
-                    const user = JSON.parse(loggedInUserStr);
-                    if (user && user.id) {
-                        const { ipcRenderer } = window.require('electron');
-                        ipcRenderer.invoke('heartbeat-device-session', { subscriberId: user.id }).catch(err => {
-                            console.error('[Heartbeat] Failed:', err);
-                        });
-                    }
-                } catch (e) {
-                    console.error('[Heartbeat] Error processing heartbeat:', e);
-                }
-            }
-        }, 2 * 60 * 1000);
     }
 
     disconnectedCallback() {
@@ -1055,30 +1073,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         // Check for the correct API key based on profile
         // exam uses Gemini, exam-groq and all others use Groq
         const isGeminiExamMode = this.selectedProfile === 'exam';
-
-        let apiKey = '';
-        if (isGeminiExamMode) {
-            apiKey = (localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey'))?.trim();
-        } else {
-            // Groq API Key logic
-            const loggedInUserStr = localStorage.getItem('loggedInUser');
-            let isApiKeyIncluded = false;
-            let dbApiKey = null;
-
-            if (loggedInUserStr) {
-                try {
-                    const user = JSON.parse(loggedInUserStr);
-                    if ((user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
-                        isApiKeyIncluded = true;
-                        dbApiKey = user.api_key.trim();
-                    }
-                } catch (e) {
-                    console.error('[CheatingDaddyApp] Error parsing user data for API key:', e);
-                }
-            }
-
-            apiKey = isApiKeyIncluded ? dbApiKey : localStorage.getItem('groqApiKey')?.trim();
-        }
+        const apiKey = getActiveApiKey(this.selectedProfile);
 
         if (!apiKey || apiKey === '') {
             // Trigger the red blink animation on the API key input
@@ -1098,7 +1093,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         // Initialize the appropriate API based on mode
         if (isGeminiExamMode) {
             // Exam mode (Gemini): Use Gemini API
-            await cheddar.initializeGemini(this.selectedProfile, this.selectedLanguage, selectedMode, selectedModel);
+            await cheddar.initializeGemini(this.selectedProfile, this.selectedLanguage, selectedMode, selectedModel, apiKey);
         } else {
             // Interview mode (including exam-groq): Use Groq API for STT + GPT OSS for response generation
             await cheddar.initializeGroq(apiKey);
@@ -1338,6 +1333,15 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             this._sessionTimeoutId = null;
         }
 
+        // Stop exam-groq auto-capture if running
+        this.stopExamGroqAutoCapture();
+
+        // Stop any active capture
+        if (window.cheddar && typeof window.cheddar.stopCapture === 'function') {
+            window.cheddar.stopCapture();
+        }
+        this.sessionActive = false;
+
         // Deactivate device session before clearing login state
         if (window.require) {
             try {
@@ -1357,39 +1361,89 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             }
         }
 
-        // Clear login state
+        // Clear login state and all cached API keys
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('loggedInUser');
+        clearCachedApiKeys();
+
         // Navigate to login view
         this.currentView = 'login';
         this.requestUpdate();
     }
 
-    // Background validation of user account (checks expiry with Supabase directly)
+    // Background validation of user account (refreshes user fields and checks expiry)
     async validateUserInBackground() {
         try {
             const loggedInUserStr = localStorage.getItem('loggedInUser');
             if (!loggedInUserStr) return;
 
             let loggedInUser = JSON.parse(loggedInUserStr);
+            if (!loggedInUser || !loggedInUser.email) return;
 
-            // Fetch the freshest data from Supabase directly via RPC (bypasses RLS)
-            const supaUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/get_expiry_date';
-            const supaResponse = await fetch(supaUrl, {
-                method: 'POST',
-                headers: {
-                    apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                    Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ user_email: loggedInUser.email }),
-            });
-            const supaData = await supaResponse.json();
+            let refreshedUser = null;
 
-            if (supaData && typeof supaData === 'string') {
-                loggedInUser.expiry_date = supaData;
-                // Update local storage so other views have the fresh date
+            // Attempt to fetch full fresh user profile from the website API
+            try {
+                const refreshRes = await fetch('https://www.interviewcracked.com/api/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscriberId: loggedInUser.id,
+                        email: loggedInUser.email,
+                    }),
+                });
+
+                if (refreshRes.ok) {
+                    const data = await refreshRes.json();
+                    if (data && data.user) {
+                        refreshedUser = data.user;
+                    }
+                }
+            } catch (endpointError) {
+                console.warn('[Auth] Website refresh endpoint unavailable, falling back to Supabase RPC:', endpointError.message);
+            }
+
+            if (refreshedUser) {
+                // Check if API key or permissions changed
+                const apiKeyChanged =
+                    refreshedUser.api_key !== loggedInUser.api_key || refreshedUser.api_key_included !== loggedInUser.api_key_included;
+
+                // Merge and update local storage so all views have fresh dashboard data
+                loggedInUser = { ...loggedInUser, ...refreshedUser };
                 localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+
+                if (apiKeyChanged) {
+                    console.log('[Auth] User permissions/API key updated from dashboard');
+                    if (isApiKeyIncluded(loggedInUser) && loggedInUser.api_key) {
+                        localStorage.setItem('apiKey', loggedInUser.api_key.trim());
+                        if (this.sessionActive && window.cheddar && typeof window.cheddar.initializeGroq === 'function') {
+                            window.cheddar.initializeGroq(loggedInUser.api_key.trim());
+                        }
+                    }
+                    this.requestUpdate();
+                }
+            } else {
+                // Fallback: Fetch fresh expiry date from Supabase directly via RPC (bypasses RLS)
+                try {
+                    const supaUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/get_expiry_date';
+                    const supaResponse = await fetch(supaUrl, {
+                        method: 'POST',
+                        headers: {
+                            apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                            Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ user_email: loggedInUser.email }),
+                    });
+                    const supaData = await supaResponse.json();
+
+                    if (supaData && typeof supaData === 'string') {
+                        loggedInUser.expiry_date = supaData;
+                        localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+                    }
+                } catch (rpcError) {
+                    console.error('[Auth] Error in fallback RPC expiry check:', rpcError);
+                }
             }
 
             if (isPlanExpired(loggedInUser.expiry_date)) {
@@ -1397,16 +1451,10 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                 this.logoutMessage =
                     'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';
 
-                // Clear login state
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('loggedInUser');
-
-                // Navigate to login view
-                this.currentView = 'login';
-                this.requestUpdate();
+                await this.handleLogout();
             }
         } catch (e) {
-            console.error('[Auth] Error checking fresh expiry:', e);
+            console.error('[Auth] Error in validateUserInBackground:', e);
         }
     }
 

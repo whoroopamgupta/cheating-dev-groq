@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
+import { getActiveApiKey, isApiKeyIncluded } from '../../utils/apiKeyResolver.js';
 
 export class MainView extends LitElement {
     static styles = css`
@@ -266,13 +267,13 @@ export class MainView extends LitElement {
 
     constructor() {
         super();
-        this.onStart = () => { };
-        this.onAPIKeyHelp = () => { };
+        this.onStart = () => {};
+        this.onAPIKeyHelp = () => {};
         this.isInitializing = false;
-        this.onLayoutModeChange = () => { };
-        this.onLogout = () => { };
+        this.onLayoutModeChange = () => {};
+        this.onLogout = () => {};
         this.showApiKeyError = false;
-        this.onClearAndRestart = () => { };
+        this.onClearAndRestart = () => {};
         this.boundKeydownHandler = this.handleKeydown.bind(this);
         // Load selected profile from localStorage (default to interview on first run)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
@@ -356,13 +357,13 @@ export class MainView extends LitElement {
     // Get the current API key based on profile
     getCurrentApiKey() {
         if (this.isExamMode()) {
-            return localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey') || '';
+            return getActiveApiKey('exam');
         } else {
             const user = this.getLoggedInUser();
-            if (user && (user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
+            if (isApiKeyIncluded(user) && user.api_key) {
                 return ''; // Return empty so the 'API Key included in plan' placeholder is visible
             }
-            return localStorage.getItem('groqApiKey') || '';
+            return (localStorage.getItem('groqApiKey') || '').trim();
         }
     }
 
@@ -493,17 +494,18 @@ export class MainView extends LitElement {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const user = this.getLoggedInUser();
         // API key included applies ONLY to Groq API (non-exam mode)
-        const apiKeyIncluded = !this.isExamMode() && user && (user.api_key_included === true || user.api_key_included === 'yes');
+        const apiKeyIncluded = !this.isExamMode() && isApiKeyIncluded(user) && Boolean(user?.api_key);
 
-        // Determine profile label based on selected profile
-        let profileLabel;
-        if (this.isExamMode()) {
-            profileLabel = 'Exam Assistant (Gemini)';
-        } else if (this.selectedProfile === 'exam-groq') {
-            profileLabel = 'Exam Assistant (Groq) - NEW';
-        } else {
-            profileLabel = 'Interview Mode';
-        }
+        const profileNames = {
+            interview: 'Job Interview',
+            'exam-groq': 'Exam Assistant (Groq)',
+            sales: 'Sales Call',
+            meeting: 'Business Meeting',
+            presentation: 'Presentation',
+            negotiation: 'Negotiation',
+            exam: 'Exam Assistant (Gemini)',
+        };
+        const profileLabel = profileNames[this.selectedProfile] || 'Job Interview';
         const apiType = this.isExamMode() ? 'Gemini' : 'Groq';
 
         return html`
@@ -530,14 +532,15 @@ export class MainView extends LitElement {
                     ${this.getStartButtonText()}
                 </button>
             </div>
-            ${!apiKeyIncluded
-                ? html`
+            ${
+                !apiKeyIncluded
+                    ? html`
                           <p class="description">
                               Don't have an API key?
                               <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span>
                           </p>
                       `
-                : ''
+                    : ''
             }
             <p class="shortcut-hint">Press <strong>${isMac ? '⌘+⌥+R' : 'Ctrl+Alt+R'}</strong> to clear session and automatically restart</p>
 

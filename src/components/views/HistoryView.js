@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
+import { getActiveApiKey } from '../../utils/apiKeyResolver.js';
 
 export class HistoryView extends LitElement {
     static styles = css`
@@ -922,7 +923,6 @@ IMPORTANT: Focus on the technical skills and concepts being tested. Help the use
 Keep the summary technical and actionable. Use bullet points where appropriate.`;
         }
 
-
         // Presentation mode prompt
         if (profile === 'presentation') {
             return `You are an expert presentation coach. Analyze the following presentation Q&A session and provide a comprehensive summary.
@@ -1025,17 +1025,8 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
             const prompt = this.getSummaryPrompt(mode, profile, questionsText, questions);
 
             // Try to use Groq API first (used by interview mode), then Gemini (used by exam mode)
-            let groqApiKey = (localStorage.getItem('groqApiKey') || '').trim();
-            const loggedInUserStr = localStorage.getItem('loggedInUser');
-            if (loggedInUserStr) {
-                try {
-                    const user = JSON.parse(loggedInUserStr);
-                    if ((user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
-                        groqApiKey = user.api_key.trim();
-                    }
-                } catch (e) {}
-            }
-            const geminiApiKey = (localStorage.getItem('geminiApiKey') || localStorage.getItem('apiKey') || '').trim();
+            const groqApiKey = getActiveApiKey('groq');
+            const geminiApiKey = getActiveApiKey('exam');
 
             let summary = '';
 
@@ -1254,61 +1245,61 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
                                           </svg>
                                       </div>
                                       ${
-                            this._isFilterOpen
-                                ? html`
-                                      <div class="custom-select-dropdown">
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'all' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'all')}
-                                          >
-                                              All Profiles
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'interview' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'interview')}
-                                          >
-                                              Interview Mode
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'sales' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'sales')}
-                                          >
-                                              Sales
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'meeting' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'meeting')}
-                                          >
-                                              Meeting
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'presentation' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'presentation')}
-                                          >
-                                              Presentation
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'negotiation' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'negotiation')}
-                                          >
-                                              Negotiation
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'exam' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'exam')}
-                                          >
-                                              Exam Assistant
-                                          </div>
-                                          <div
-                                              class="custom-select-option ${this._profileFilter === 'exam-groq' ? 'selected' : ''}"
-                                              @click=${e => this.handleCustomFilterSelect(e, 'exam-groq')}
-                                          >
-                                              Exam (Groq)
-                                          </div>
-                                      </div>
-                                  `
-                                : ''
-                        }
+                                          this._isFilterOpen
+                                              ? html`
+                                                    <div class="custom-select-dropdown">
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'all' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'all')}
+                                                        >
+                                                            All Profiles
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'interview' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'interview')}
+                                                        >
+                                                            Interview Mode
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'sales' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'sales')}
+                                                        >
+                                                            Sales
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'meeting' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'meeting')}
+                                                        >
+                                                            Meeting
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'presentation' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'presentation')}
+                                                        >
+                                                            Presentation
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'negotiation' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'negotiation')}
+                                                        >
+                                                            Negotiation
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'exam' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'exam')}
+                                                        >
+                                                            Exam Assistant
+                                                        </div>
+                                                        <div
+                                                            class="custom-select-option ${this._profileFilter === 'exam-groq' ? 'selected' : ''}"
+                                                            @click=${e => this.handleCustomFilterSelect(e, 'exam-groq')}
+                                                        >
+                                                            Exam (Groq)
+                                                        </div>
+                                                    </div>
+                                                `
+                                              : ''
+                                      }
                                   </div>
                               </div>
                           `
@@ -1325,74 +1316,81 @@ Keep the summary concise and helpful. Use bullet points where appropriate.`;
                         : html`
                               <div class="conversation-list">
                                   ${filteredConversations.map(
-                                  conv => html`
-                                      <div
-                                          class="conversation-item profile-${conv.profile || 'default'}"
-                                          @click=${() => this.handleConversationClick(conv)}
-                                      >
-                                          <div class="conversation-header">
-                                              <div style="display: flex; align-items: center; gap: 8px;">
-                                                  <span style="font-size: 14px;">${this.getProfileIcon(conv.profile)}</span>
-                                                  <span class="conversation-date">${this.formatDate(conv.timestamp)}</span>
+                                      conv => html`
+                                          <div
+                                              class="conversation-item profile-${conv.profile || 'default'}"
+                                              @click=${() => this.handleConversationClick(conv)}
+                                          >
+                                              <div class="conversation-header">
+                                                  <div style="display: flex; align-items: center; gap: 8px;">
+                                                      <span style="font-size: 14px;">${this.getProfileIcon(conv.profile)}</span>
+                                                      <span class="conversation-date">${this.formatDate(conv.timestamp)}</span>
+                                                  </div>
+                                                  <button
+                                                      class="delete-btn"
+                                                      @click=${e => this.deleteConversation(e, conv.id)}
+                                                      title="Delete conversation"
+                                                  >
+                                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                          <path
+                                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                              stroke-linecap="round"
+                                                              stroke-linejoin="round"
+                                                          />
+                                                      </svg>
+                                                  </button>
                                               </div>
-                                              <button
-                                                  class="delete-btn"
-                                                  @click=${e => this.deleteConversation(e, conv.id)}
-                                                  title="Delete conversation"
-                                              >
-                                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                      <path
-                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                          stroke-linecap="round"
-                                                          stroke-linejoin="round"
-                                                      />
-                                                  </svg>
-                                              </button>
+                                              <div class="conversation-preview">${this.getPreviewText(conv)}</div>
+                                              <div class="conversation-meta">
+                                                  <span>
+                                                      <svg
+                                                          width="14"
+                                                          height="14"
+                                                          viewBox="0 0 24 24"
+                                                          fill="none"
+                                                          stroke="currentColor"
+                                                          stroke-width="2"
+                                                      >
+                                                          <path
+                                                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                                              stroke-linecap="round"
+                                                              stroke-linejoin="round"
+                                                          />
+                                                      </svg>
+                                                      ${conv.questions?.length || 0} questions
+                                                  </span>
+                                                  ${
+                                                      conv.duration
+                                                          ? html`
+                                                                <span>
+                                                                    <svg
+                                                                        width="14"
+                                                                        height="14"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                    >
+                                                                        <circle cx="12" cy="12" r="10" />
+                                                                        <path d="M12 6v6l4 2" />
+                                                                    </svg>
+                                                                    ${this.formatDuration(conv.duration)}
+                                                                </span>
+                                                            `
+                                                          : ''
+                                                  }
+                                                  ${
+                                                      conv.profile
+                                                          ? html`<span style="text-transform: capitalize;">${conv.profile}</span>`
+                                                          : conv.mode
+                                                            ? html`<span style="text-transform: capitalize;">${conv.mode}</span>`
+                                                            : ''
+                                                  }
+                                                  ${conv.summary ? html`<span style="color: #a78bfa;">📝 Summary</span>` : ''}
+                                              </div>
                                           </div>
-                                          <div class="conversation-preview">${this.getPreviewText(conv)}</div>
-                                          <div class="conversation-meta">
-                                              <span>
-                                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                      <path
-                                                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                                                          stroke-linecap="round"
-                                                          stroke-linejoin="round"
-                                                      />
-                                                  </svg>
-                                                  ${conv.questions?.length || 0} questions
-                                              </span>
-                                              ${
-                                                  conv.duration
-                                                      ? html`
-                                                            <span>
-                                                                <svg
-                                                                    width="14"
-                                                                    height="14"
-                                                                    viewBox="0 0 24 24"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    stroke-width="2"
-                                                                >
-                                                                    <circle cx="12" cy="12" r="10" />
-                                                                    <path d="M12 6v6l4 2" />
-                                                                </svg>
-                                                                ${this.formatDuration(conv.duration)}
-                                                            </span>
-                                                        `
-                                                      : ''
-                                              }
-                                              ${
-                                                  conv.profile
-                                                      ? html`<span style="text-transform: capitalize;">${conv.profile}</span>`
-                                                      : conv.mode
-                                                        ? html`<span style="text-transform: capitalize;">${conv.mode}</span>`
-                                                        : ''
-                                              }
-                                              ${conv.summary ? html`<span style="color: #a78bfa;">📝 Summary</span>` : ''}
-                                          </div>
-                                      </div>
-                                  `
-                              )}
+                                      `
+                                  )}
                               </div>
                           `
                 }

@@ -1,6 +1,7 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
 import '../common/CustomDropdown.js';
+import { getActiveApiKey } from '../../utils/apiKeyResolver.js';
 
 export class ProfileView extends LitElement {
     static styles = css`
@@ -57,12 +58,24 @@ export class ProfileView extends LitElement {
             border-radius: 1.5px;
         }
 
-        .section-title.green::before { background: #34d399; }
-        .section-title.purple::before { background: #a855f7; }
-        .section-title.orange::before { background: #fb923c; }
-        .section-title.red::before { background: #ef4444; }
-        .section-title.teal::before { background: #2dd4bf; }
-        .section-title.pink::before { background: #ec4899; }
+        .section-title.green::before {
+            background: #34d399;
+        }
+        .section-title.purple::before {
+            background: #a855f7;
+        }
+        .section-title.orange::before {
+            background: #fb923c;
+        }
+        .section-title.red::before {
+            background: #ef4444;
+        }
+        .section-title.teal::before {
+            background: #2dd4bf;
+        }
+        .section-title.pink::before {
+            background: #ec4899;
+        }
 
         .form-grid {
             display: grid;
@@ -469,15 +482,19 @@ export class ProfileView extends LitElement {
             font-weight: 500;
             color: var(--text-color);
         }
-        
+
         .resume-upload-subtext {
             font-size: 11px;
             color: var(--description-color, rgba(255, 255, 255, 0.5));
         }
 
         @keyframes drawCheck {
-            0% { stroke-dashoffset: 24; }
-            100% { stroke-dashoffset: 0; }
+            0% {
+                stroke-dashoffset: 24;
+            }
+            100% {
+                stroke-dashoffset: 0;
+            }
         }
 
         .resume-status {
@@ -487,25 +504,29 @@ export class ProfileView extends LitElement {
             align-items: center;
             justify-content: space-between;
             padding: 10px 14px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .resume-status-left {
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .resume-status.success { 
+        .resume-status.success {
             border-color: rgba(52, 211, 153, 0.4);
             background: rgba(52, 211, 153, 0.1);
-            color: var(--success-color, #34d399); 
+            color: var(--success-color, #34d399);
         }
 
-        .resume-status.error { color: var(--error-color, #ef4444); }
-        .resume-status.loading { color: var(--warning-color, #fbbf24); }
+        .resume-status.error {
+            color: var(--error-color, #ef4444);
+        }
+        .resume-status.loading {
+            color: var(--warning-color, #fbbf24);
+        }
 
         .checkmark-icon {
             width: 18px;
@@ -550,7 +571,7 @@ export class ProfileView extends LitElement {
         this.resumeUploadError = '';
         this.resumeUploadSuccess = false;
         this.resumeFilename = localStorage.getItem('resumeFilename') || '';
-        this.onProfileChange = () => { };
+        this.onProfileChange = () => {};
     }
 
     connectedCallback() {
@@ -607,7 +628,6 @@ export class ProfileView extends LitElement {
             negotiation: 'Negotiation',
             'exam-groq': 'Exam Assistant (Groq)',
             exam: 'Exam Assistant (Gemini)',
-
         };
     }
 
@@ -700,20 +720,7 @@ export class ProfileView extends LitElement {
             }
 
             // 2. Send raw text to Groq API to normalize it
-            let apiKey = localStorage.getItem('groqApiKey')?.trim() || localStorage.getItem('apiKey')?.trim();
-
-            // Check for database-provided API key
-            const loggedInUserStr = localStorage.getItem('loggedInUser');
-            if (loggedInUserStr) {
-                try {
-                    const user = JSON.parse(loggedInUserStr);
-                    if (user && (user.api_key_included === true || user.api_key_included === 'yes') && user.api_key) {
-                        apiKey = user.api_key.trim();
-                    }
-                } catch (e) {
-                    console.error('Error parsing loggedInUser for API key', e);
-                }
-            }
+            const apiKey = getActiveApiKey('groq');
 
             if (!apiKey) {
                 throw new Error('API key is missing. Please set your API key in the settings first or request access.');
@@ -729,7 +736,6 @@ export class ProfileView extends LitElement {
             localStorage.setItem('resumeFilename', file.name);
             this.resumeFilename = file.name;
             this.resumeUploadSuccess = true;
-
         } catch (err) {
             console.error('Resume upload error:', err);
             this.resumeUploadError = err.message || 'An error occurred during upload';
@@ -764,7 +770,15 @@ export class ProfileView extends LitElement {
         if (this.resumeUploadSuccess || existingContext) {
             return html`<div class="resume-status success">
                 <div class="resume-status-left">
-                    <svg class="checkmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                        class="checkmark-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     <div style="display: flex; flex-direction: column;">
@@ -820,17 +834,33 @@ export class ProfileView extends LitElement {
                         <div class="form-group full-width">
                             <label class="form-label">Background Knowledge (Resume)</label>
                             <div>
-                                <input type="file" id="resume-upload-input" accept=".pdf,.docx,.txt" style="display: none" @change=${this.handleResumeUpload} />
-                                <div class="resume-upload-box ${this.isUploadingResume ? 'disabled' : ''}" @click=${() => !this.isUploadingResume && this.shadowRoot.getElementById('resume-upload-input').click()}>
-                                    <svg class="resume-upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                <input
+                                    type="file"
+                                    id="resume-upload-input"
+                                    accept=".pdf,.docx,.txt"
+                                    style="display: none"
+                                    @change=${this.handleResumeUpload}
+                                />
+                                <div
+                                    class="resume-upload-box ${this.isUploadingResume ? 'disabled' : ''}"
+                                    @click=${() => !this.isUploadingResume && this.shadowRoot.getElementById('resume-upload-input').click()}
+                                >
+                                    <svg
+                                        class="resume-upload-icon"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                        />
                                     </svg>
-                                    <div class="resume-upload-text">
-                                        ${this.isUploadingResume ? 'Processing...' : 'Click to Upload Resume'}
-                                    </div>
-                                    <div class="resume-upload-subtext">
-                                        Supports PDF, DOCX, TXT
-                                    </div>
+                                    <div class="resume-upload-text">${this.isUploadingResume ? 'Processing...' : 'Click to Upload Resume'}</div>
+                                    <div class="resume-upload-subtext">Supports PDF, DOCX, TXT</div>
                                 </div>
                                 ${this.renderResumeStatus()}
                             </div>
