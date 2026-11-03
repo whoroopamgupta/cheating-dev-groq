@@ -500,10 +500,11 @@ export class CheatingDaddyApp extends LitElement {
             ipcRenderer.on('managed-credentials', (_, value) => localStorage.setItem('managedSession', JSON.stringify(value)));
             ipcRenderer.on('managed-usage', (_, value) => {
                 const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
-                if (user?.account_type === 'managed') { user.remaining_seconds = Math.floor(value.remaining_seconds); localStorage.setItem('loggedInUser', JSON.stringify(user)); }
+                if (user?.account_type === 'managed') { user.remaining_seconds = value.plan === 'paid' ? null : Math.floor(value.remaining_seconds); user.unlimited = value.plan === 'paid'; localStorage.setItem('loggedInUser', JSON.stringify(user)); }
                 this.setStatus(value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · Free trial`);
             });
             ipcRenderer.on('managed-session-ended', async (_, message) => { await this.handleCloseSession(); this.setStatus(message); window.alert(message); });
+            ipcRenderer.invoke('legacy-auth', localStorage.getItem('legacySession'));
             const savedManaged = localStorage.getItem('managedSession');
             if (savedManaged) ipcRenderer.invoke('managed-auth', JSON.parse(savedManaged)).catch(() => this.handleLogout());
             ipcRenderer.on('update-response', (_, response) => {
@@ -560,7 +561,7 @@ export class CheatingDaddyApp extends LitElement {
                     if (loggedInUserStr && window.require) {
                         try {
                             const user = JSON.parse(loggedInUserStr);
-                            if (user && user.id) {
+                            if (user && user.id && user.account_type !== 'managed') {
                                 const { ipcRenderer } = window.require('electron');
                                 ipcRenderer.invoke('heartbeat-device-session', { subscriberId: user.id }).catch(err => {
                                     console.error('[Heartbeat] Failed:', err);
@@ -1062,30 +1063,26 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
     // Main view event handlers
     async handleStart() {
-        const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
-        if (user?.account_type !== 'managed') return this.startSessionInternal();
+        if (this._startingSession) return;
+        this._startingSession = true;
         try {
-            if (this.selectedProfile !== 'interview') throw new Error('Select Interview mode to use your account minutes.');
-            const { ipcRenderer } = window.require('electron');
-            await ipcRenderer.invoke('managed-start', this.selectedProfile);
+            const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
+            if (user?.account_type === 'managed' && this.selectedProfile !== 'interview') {
+                throw new Error('Select Interview mode to use your account minutes.');
+            }
             await this.startSessionInternal();
         } catch (error) {
+            cheddar.stopCapture();
+            clearTimeout(this._sessionTimeoutId);
             await window.require('electron').ipcRenderer.invoke('managed-stop');
             this.setStatus(error.message);
             window.alert(error.message);
+        } finally {
+            this._startingSession = false;
         }
     }
 
     async startSessionInternal() {
-        // Start 2 hour auto-close timer (2 * 60 * 60 * 1000 = 7200000 ms)
-        if (this._sessionTimeoutId) {
-            clearTimeout(this._sessionTimeoutId);
-        }
-        this._sessionTimeoutId = setTimeout(() => {
-            console.log('[CheatingDaddyApp] Session auto-closed after 2 hours');
-            this.handleCloseSession();
-        }, 7200000);
-
         // Auto-set mode based on profile
         let selectedMode;
         if (this.selectedProfile === 'exam') {
@@ -1179,7 +1176,21 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             console.log('🎤 Interview mode: Manual capture only - Press Ctrl+Enter if needed. Voice questions are auto-detected.');
         }
 
-        cheddar.startCapture(screenshotMode, this.selectedImageQuality);
+        const captured = await cheddar.startCapture(screenshotMode, this.selectedImageQuality);
+        if (!captured) throw new Error('Capture could not start. Check your screen and microphone permissions.');
+        const account = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
+        if (account?.account_type === 'managed') {
+            await window.require('electron').ipcRenderer.invoke('managed-start', this.selectedProfile);
+        }
+        // Start 2 hour auto-close timer (2 * 60 * 60 * 1000 = 7200000 ms)
+        if (this._sessionTimeoutId) {
+            clearTimeout(this._sessionTimeoutId);
+        }
+        this._sessionTimeoutId = setTimeout(() => {
+            console.log('[CheatingDaddyApp] Session auto-closed after 2 hours');
+            this.handleCloseSession();
+        }, 7200000);
+
         this.responses = [];
         this.currentResponseIndex = -1;
         this._sessionQuestions = [];
@@ -1391,6 +1402,8 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
         // Clear login state and all cached API keys
         if (window.require) await window.require('electron').ipcRenderer.invoke('managed-auth', null);
+        if (window.require) await window.require('electron').ipcRenderer.invoke('legacy-auth', null);
+        localStorage.removeItem('legacySession');
         localStorage.removeItem('managedSession');
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('loggedInUser');
@@ -1421,7 +1434,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             try {
                 const refreshRes = await fetch('https://www.interviewcracked.com/api/auth/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('legacySession') || ''}` },
                     body: JSON.stringify({
                         subscriberId: loggedInUser.id,
                         email: loggedInUser.email,
@@ -1430,12 +1443,20 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
                 if (refreshRes.ok) {
                     const data = await refreshRes.json();
+                    if (data.legacy_token) {
+                        localStorage.setItem('legacySession',data.legacy_token);
+                        await window.require('electron').ipcRenderer.invoke('legacy-auth',data.legacy_token);
+                    }
                     if (data && data.user) {
                         refreshedUser = data.user;
                     }
+                } else if (refreshRes.status === 401 || refreshRes.status === 403) {
+                    this.logoutMessage = 'Please sign in again to verify your subscription.';
+                    await this.handleLogout();
+                    return;
                 }
             } catch (endpointError) {
-                console.warn('[Auth] Website refresh endpoint unavailable, falling back to Supabase RPC:', endpointError.message);
+                console.warn('[Auth] Website refresh endpoint unavailable:', endpointError.message);
             }
 
             if (refreshedUser) {
@@ -1456,28 +1477,6 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         }
                     }
                     this.requestUpdate();
-                }
-            } else {
-                // Fallback: Fetch fresh expiry date from Supabase directly via RPC (bypasses RLS)
-                try {
-                    const supaUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/get_expiry_date';
-                    const supaResponse = await fetch(supaUrl, {
-                        method: 'POST',
-                        headers: {
-                            apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                            Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ user_email: loggedInUser.email }),
-                    });
-                    const supaData = await supaResponse.json();
-
-                    if (supaData && typeof supaData === 'string') {
-                        loggedInUser.expiry_date = supaData;
-                        localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
-                    }
-                } catch (rpcError) {
-                    console.error('[Auth] Error in fallback RPC expiry check:', rpcError);
                 }
             }
 

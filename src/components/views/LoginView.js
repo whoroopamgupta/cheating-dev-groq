@@ -472,75 +472,34 @@ export class LoginView extends LitElement {
             let user = data.user;
             if (user.account_type === 'managed') {
                 const { ipcRenderer } = window.require('electron');
-                await ipcRenderer.invoke('managed-auth', data.session);
-                localStorage.setItem('managedSession', JSON.stringify(data.session));
+                localStorage.removeItem('legacySession');
+                await ipcRenderer.invoke('legacy-auth', null);
+                const authenticated = await ipcRenderer.invoke('managed-auth', data.session);
+                user = authenticated.user;
+                localStorage.setItem('managedSession', JSON.stringify(authenticated.session));
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('loggedInUser', JSON.stringify(user));
                 this.onLoginSuccess(user);
                 return;
             }
 
-            // Fetch the freshest data from Supabase directly via RPC (bypasses RLS & cache)
-            try {
-                const supaUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/get_expiry_date';
-                const supaResponse = await fetch(supaUrl, {
-                    method: 'POST',
-                    headers: {
-                        apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                        Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ user_email: user.email }),
-                });
-                const supaData = await supaResponse.json();
-
-                if (supaData && typeof supaData === 'string') {
-                    user.expiry_date = supaData;
-                }
-            } catch (e) {
-                console.error('[Auth] Failed to fetch fresh data from Supabase RPC', e);
-            }
-
-            // Enforce expiry date (IST) client-side as a fallback
+            if (!data.legacy_token) throw new Error('Please update the website before using this app version.');
             if (isPlanExpired(user.expiry_date)) {
                 this.errorMessage = 'Your subscription has expired. Please renew your plan.';
                 this.showError = true;
                 return;
             }
-
-            // Step: Enforce Strict Device Locking via Supabase RPC
-            if (window.require) {
-                try {
-                    const { ipcRenderer } = window.require('electron');
-                    const deviceId = await ipcRenderer.invoke('get-device-id');
-                    
-                    const lockUrl = 'https://ghiektugiazbydbhishq.supabase.co/rest/v1/rpc/check_and_lock_device';
-                    const lockResponse = await fetch(lockUrl, {
-                        method: 'POST',
-                        headers: {
-                            apikey: 'sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                            Authorization: 'Bearer sb_publishable_80fblETfrWWng4c7omYxQw_z_qNBOEU',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ p_email: user.email, p_device_id: deviceId }),
-                    });
-                    
-                    if (lockResponse.ok) {
-                        const isAllowed = await lockResponse.json();
-                        if (isAllowed !== true) {
-                            this.errorMessage = 'This account is securely locked to a different device. Please contact support if you need to transfer your license to a new computer.';
-                            this.showError = true;
-                            this.isLoading = false;
-                            return;
-                        }
-                    } else {
-                        console.error('[Auth] RPC failed, possibly because SQL function is missing yet', await lockResponse.text());
-                    }
-                } catch (deviceError) {
-                    console.error('[Login] Device lock check error:', deviceError);
-                    console.warn('[Login] Device lock check failed, allowing login as fallback');
-                }
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('legacy-auth', data.legacy_token);
+            const device = await ipcRenderer.invoke('check-device-session', {subscriberId: user.id});
+            if (!device.allowed) {
+                this.errorMessage = device.error === 'DEVICE_LIMIT_EXCEEDED'
+                    ? 'Your device limit has been reached. Contact support to transfer your account.'
+                    : device.error || 'Could not verify this device. Please try again.';
+                this.showError = true;
+                return;
             }
+            localStorage.setItem('legacySession', data.legacy_token);
 
             // Login successful
             console.log('[Login] Success for user:', user.name);

@@ -3,6 +3,8 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
     packagerConfig: {
+        // Local credentials and development artifacts must never ship in the application.
+        ignore: [/^\/\.env(?:\..*)?$/, /^\/(?:\.git|out|coverage|npm-cache)(?:\/|$)/, /^\/src\/__tests__(?:\/|$)/],
         asar: {
             unpack: '**/{onnxruntime-node,@ricky0123}/**/*',
         },

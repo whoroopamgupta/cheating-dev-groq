@@ -7,6 +7,9 @@ const https = require('https');
  * Supabase directly. The service_role key stays server-side.
  */
 
+let legacyToken = null;
+function setLegacyToken(token) { legacyToken = typeof token === 'string' && token.length <= 4096 ? token : null; }
+
 const API_BASE = 'https://www.interviewcracked.com/api/device-sessions';
 
 /**
@@ -17,6 +20,7 @@ const API_BASE = 'https://www.interviewcracked.com/api/device-sessions';
  */
 function apiPost(endpoint, body) {
     return new Promise((resolve, reject) => {
+        if (!legacyToken) { reject(new Error('Please sign in again')); return; }
         const url = new URL(`${API_BASE}/${endpoint}`);
         const payload = JSON.stringify(body);
 
@@ -27,6 +31,7 @@ function apiPost(endpoint, body) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                Authorization: `Bearer ${legacyToken}`,
                 'Content-Length': Buffer.byteLength(payload),
             },
         };
@@ -144,6 +149,7 @@ async function updateLastActive(subscriberId, deviceId) {
 }
 
 module.exports = {
+    setLegacyToken,
     checkAndRegisterDevice,
     deactivateDeviceSession,
     updateLastActive,

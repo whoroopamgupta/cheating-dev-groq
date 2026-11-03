@@ -42,6 +42,11 @@ describe('apiKeyResolver', () => {
     });
 
     describe('getActiveApiKey', () => {
+        it('routes managed accounts through the proxy even with stale manual credentials', () => {
+            localStorage.setItem('groqApiKey', 'stale-manual-key');
+            localStorage.setItem('loggedInUser', JSON.stringify({account_type:'managed',api_key_included:true,api_key:'old-key'}));
+            expect(getActiveApiKey('interview')).toBe('managed-account');
+        });
         it('returns user.api_key for Groq mode when key is included', () => {
             const user = { api_key_included: true, api_key: 'gsk_db_key_123' };
             localStorage.setItem('loggedInUser', JSON.stringify(user));

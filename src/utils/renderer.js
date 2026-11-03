@@ -422,9 +422,11 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             // Capture first screenshot immediately
             setTimeout(() => captureScreenshot(imageQuality), 100);
         }
+        return true;
     } catch (err) {
         console.error('Error starting capture:', err);
         cheddar.setStatus('error');
+        return false;
     }
 }
 

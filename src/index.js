@@ -378,6 +378,8 @@ function setupGeneralIpcHandlers() {
         }
     });
 
+    ipcMain.handle('legacy-auth', (_event, token) => require('./utils/deviceSession').setLegacyToken(token));
+
     // Device session management handlers
     ipcMain.handle('check-device-session', async (event, { subscriberId, screensAllowed }) => {
         try {
