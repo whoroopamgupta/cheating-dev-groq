@@ -57,6 +57,7 @@ function handleSquirrelEvent(squirrelCommand) {
 }
 
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
+require('./utils/managedAccount').setup();
 const { createWindow, updateGlobalShortcuts } = require('./utils/window');
 const { setupGeminiIpcHandlers, stopMacOSAudioCapture, sendToRenderer } = require('./utils/gemini');
 const { setupGroqIpcHandlers } = require('./utils/groq');

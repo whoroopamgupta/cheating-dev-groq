@@ -470,6 +470,15 @@ export class LoginView extends LitElement {
             }
 
             let user = data.user;
+            if (user.account_type === 'managed') {
+                const { ipcRenderer } = window.require('electron');
+                await ipcRenderer.invoke('managed-auth', data.session);
+                localStorage.setItem('managedSession', JSON.stringify(data.session));
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('loggedInUser', JSON.stringify(user));
+                this.onLoginSuccess(user);
+                return;
+            }
 
             // Fetch the freshest data from Supabase directly via RPC (bypasses RLS & cache)
             try {
@@ -554,7 +563,7 @@ export class LoginView extends LitElement {
     async handleGetAccess() {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            await ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com');
+            await ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com/account');
         }
     }
 

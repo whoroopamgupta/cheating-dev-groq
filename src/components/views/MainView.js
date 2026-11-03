@@ -360,7 +360,7 @@ export class MainView extends LitElement {
             return getActiveApiKey('exam');
         } else {
             const user = this.getLoggedInUser();
-            if (isApiKeyIncluded(user) && user.api_key) {
+            if (user?.account_type === 'managed' || (isApiKeyIncluded(user) && user.api_key)) {
                 return ''; // Return empty so the 'API Key included in plan' placeholder is visible
             }
             return (localStorage.getItem('groqApiKey') || '').trim();
@@ -494,7 +494,7 @@ export class MainView extends LitElement {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const user = this.getLoggedInUser();
         // API key included applies ONLY to Groq API (non-exam mode)
-        const apiKeyIncluded = !this.isExamMode() && isApiKeyIncluded(user) && Boolean(user?.api_key);
+        const apiKeyIncluded = user?.account_type === 'managed' || (!this.isExamMode() && isApiKeyIncluded(user) && Boolean(user?.api_key));
 
         const profileNames = {
             interview: 'Job Interview',
@@ -519,6 +519,7 @@ export class MainView extends LitElement {
                 Mode: <strong>${profileLabel}</strong> (using ${apiType} API)
             </p>
 
+            ${user?.account_type === 'managed' ? html`<p class="description">${user.plan_type}: ${user.unlimited ? 'Unlimited access' : `${Math.floor((user.remaining_seconds || 0) / 60)} minutes remaining`}. <a href="#" @click=${() => window.require('electron').ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com/account')}>Account / Upgrade</a></p>` : ''}
             <div class="input-group">
                 <input
                     type="password"

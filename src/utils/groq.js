@@ -158,7 +158,8 @@ async function transcribeWithGroq(wavBuffer) {
         // Combine all parts
         const requestBody = Buffer.concat([filePartHeader, wavBuffer, modelPart]);
 
-        const url = new URL(`${GROQ_API_BASE}/audio/transcriptions`);
+        const managedProxy = groqApiKey === 'managed-account' ? require('./managedAccount').proxyOptions() : null;
+        const url = new URL(managedProxy ? managedProxy.url : `${GROQ_API_BASE}/audio/transcriptions`);
 
         const options = {
             hostname: url.hostname,
@@ -167,6 +168,7 @@ async function transcribeWithGroq(wavBuffer) {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${groqApiKey}`,
+                ...(managedProxy ? managedProxy.headers : {}),
                 'Content-Type': `multipart/form-data; boundary=${boundary}`,
                 'Content-Length': requestBody.length,
             },
@@ -578,6 +580,7 @@ RULES:
             max_completion_tokens: 1024,
         });
 
+        if (apiKeyToUse === 'managed-account') { resolve(rawText); return; } // Resume context stays local until the metered interview.
         const options = {
             hostname: 'api.groq.com',
             path: '/openai/v1/chat/completions',
@@ -699,7 +702,8 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
 
         const requestBody = JSON.stringify(payload);
 
-        const url = new URL(`${GROQ_API_BASE}/chat/completions`);
+        const managedProxy = groqApiKey === 'managed-account' ? require('./managedAccount').proxyOptions() : null;
+        const url = new URL(managedProxy ? managedProxy.url : `${GROQ_API_BASE}/chat/completions`);
 
         const options = {
             hostname: url.hostname,
@@ -708,6 +712,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${groqApiKey}`,
+                ...(managedProxy ? managedProxy.headers : {}),
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(requestBody),
             },

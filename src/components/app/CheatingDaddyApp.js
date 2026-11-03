@@ -408,8 +408,9 @@ export class CheatingDaddyApp extends LitElement {
             if (loggedInUserStr) {
                 try {
                     const loggedInUser = JSON.parse(loggedInUserStr);
-                    if (isPlanExpired(loggedInUser.expiry_date)) {
+                    if (loggedInUser.account_type !== 'managed' && isPlanExpired(loggedInUser.expiry_date)) {
                         console.log('[Auth] User plan expired on boot, logging out');
+                        localStorage.removeItem('managedSession');
                         localStorage.removeItem('isLoggedIn');
                         localStorage.removeItem('loggedInUser');
                         isLoggedIn = false;
@@ -496,6 +497,15 @@ export class CheatingDaddyApp extends LitElement {
         // Set up IPC listeners if needed
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
+            ipcRenderer.on('managed-credentials', (_, value) => localStorage.setItem('managedSession', JSON.stringify(value)));
+            ipcRenderer.on('managed-usage', (_, value) => {
+                const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
+                if (user?.account_type === 'managed') { user.remaining_seconds = Math.floor(value.remaining_seconds); localStorage.setItem('loggedInUser', JSON.stringify(user)); }
+                this.setStatus(value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · Free trial`);
+            });
+            ipcRenderer.on('managed-session-ended', async (_, message) => { await this.handleCloseSession(); this.setStatus(message); window.alert(message); });
+            const savedManaged = localStorage.getItem('managedSession');
+            if (savedManaged) ipcRenderer.invoke('managed-auth', JSON.parse(savedManaged)).catch(() => this.handleLogout());
             ipcRenderer.on('update-response', (_, response) => {
                 this.setResponse(response);
             });
@@ -871,6 +881,7 @@ export class CheatingDaddyApp extends LitElement {
         // Close the session
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('managed-stop');
             await ipcRenderer.invoke('close-session');
         }
         this.sessionActive = false;
@@ -903,6 +914,7 @@ export class CheatingDaddyApp extends LitElement {
         // Close the session
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('managed-stop');
             await ipcRenderer.invoke('close-session');
         }
         this.sessionActive = false;
@@ -931,6 +943,7 @@ export class CheatingDaddyApp extends LitElement {
         // Close the session
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('managed-stop');
             await ipcRenderer.invoke('close-session');
         }
         this.sessionActive = false;
@@ -1049,6 +1062,21 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
 
     // Main view event handlers
     async handleStart() {
+        const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
+        if (user?.account_type !== 'managed') return this.startSessionInternal();
+        try {
+            if (this.selectedProfile !== 'interview') throw new Error('Select Interview mode to use your account minutes.');
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('managed-start', this.selectedProfile);
+            await this.startSessionInternal();
+        } catch (error) {
+            await window.require('electron').ipcRenderer.invoke('managed-stop');
+            this.setStatus(error.message);
+            window.alert(error.message);
+        }
+    }
+
+    async startSessionInternal() {
         // Start 2 hour auto-close timer (2 * 60 * 60 * 1000 = 7200000 ms)
         if (this._sessionTimeoutId) {
             clearTimeout(this._sessionTimeoutId);
@@ -1348,7 +1376,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                 const loggedInUserStr = localStorage.getItem('loggedInUser');
                 if (loggedInUserStr) {
                     const loggedInUser = JSON.parse(loggedInUserStr);
-                    if (loggedInUser && loggedInUser.id) {
+                    if (loggedInUser && loggedInUser.id && loggedInUser.account_type !== 'managed') {
                         const { ipcRenderer } = window.require('electron');
                         await ipcRenderer.invoke('deactivate-device-session', {
                             subscriberId: loggedInUser.id,
@@ -1362,6 +1390,8 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         }
 
         // Clear login state and all cached API keys
+        if (window.require) await window.require('electron').ipcRenderer.invoke('managed-auth', null);
+        localStorage.removeItem('managedSession');
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('loggedInUser');
         clearCachedApiKeys();
@@ -1380,6 +1410,11 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             let loggedInUser = JSON.parse(loggedInUserStr);
             if (!loggedInUser || !loggedInUser.email) return;
 
+            if (loggedInUser.account_type === 'managed') {
+                const { user } = await window.require('electron').ipcRenderer.invoke('managed-account');
+                localStorage.setItem('loggedInUser', JSON.stringify(user));
+                return;
+            }
             let refreshedUser = null;
 
             // Attempt to fetch full fresh user profile from the website API
@@ -1446,7 +1481,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                 }
             }
 
-            if (isPlanExpired(loggedInUser.expiry_date)) {
+            if (loggedInUser.account_type !== 'managed' && isPlanExpired(loggedInUser.expiry_date)) {
                 console.log('[Auth] User plan expired from fresh check, logging out:', loggedInUser.email);
                 this.logoutMessage =
                     'Your plan has ended. If this is a mistake, please contact webdevarmyhq@gmail.com. To extend your plan, visit our website.';

@@ -50,6 +50,8 @@ export function getActiveApiKey(profileOrMode = 'interview', userOverride = null
         }
     }
 
+    if (user?.account_type === 'managed') return 'managed-account';
+
     if (isApiKeyIncluded(user) && user.api_key && typeof user.api_key === 'string' && user.api_key.trim()) {
         return user.api_key.trim();
     }
