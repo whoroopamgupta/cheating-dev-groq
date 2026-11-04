@@ -1183,12 +1183,15 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             console.log('🎤 Interview mode: Manual capture only - Press Ctrl+Enter if needed. Voice questions are auto-detected.');
         }
 
-        const captured = await cheddar.startCapture(screenshotMode, this.selectedImageQuality);
-        if (!captured) throw new Error('Capture could not start. Check your screen and microphone permissions.');
         const account = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
         if (account?.account_type === 'managed') {
+            // Establish the metered lease before any audio source starts. The
+            // capture helpers can emit speech immediately, and starting them
+            // first discarded that audio because the proxy had no session yet.
             await window.require('electron').ipcRenderer.invoke('managed-start', this.selectedProfile);
         }
+        const captured = await cheddar.startCapture(screenshotMode, this.selectedImageQuality);
+        if (!captured) throw new Error('Capture could not start. Check your screen and microphone permissions.');
         // Start 2 hour auto-close timer (2 * 60 * 60 * 1000 = 7200000 ms)
         if (this._sessionTimeoutId) {
             clearTimeout(this._sessionTimeoutId);

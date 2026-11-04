@@ -4,6 +4,18 @@ const path = require('path');
 const vm = require('vm');
 
 describe('interactive request routing', () => {
+    it('opens the managed session before capture can emit audio', () => {
+        const source = fs.readFileSync(path.join(__dirname, '../components/app/CheatingDaddyApp.js'), 'utf8');
+        const start = source.indexOf('async startSessionInternal()');
+        const end = source.indexOf('\n    async startExamGroqAutoCapture', start);
+        const sessionSource = source.slice(start, end);
+        const managedStart = sessionSource.indexOf("invoke('managed-start'");
+        const captureStart = sessionSource.indexOf('cheddar.startCapture(');
+        expect(managedStart).toBeGreaterThanOrEqual(0);
+        expect(captureStart).toBeGreaterThanOrEqual(0);
+        expect(managedStart).toBeLessThan(captureStart);
+    });
+
     it('sends a plain typed question without requiring capture permission or uploading a screenshot', async () => {
         const source = fs.readFileSync(path.join(__dirname, '../utils/renderer.js'), 'utf8');
         const start = source.indexOf('async function sendTextMessage(text)');

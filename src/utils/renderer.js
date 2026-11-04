@@ -48,6 +48,7 @@ let offscreenCanvas = null;
 let offscreenContext = null;
 let currentImageQuality = 'medium'; // Store current image quality for manual screenshots
 let microphoneEnabled = false; // Microphone toggle state - starts OFF by default
+let screenAnalysisPromise = null;
 
 const isLinux = process.platform === 'linux';
 const isMacOS = process.platform === 'darwin';
@@ -165,6 +166,55 @@ function arrayBufferToBase64(buffer) {
         binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
+}
+
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function ensureCaptureVideoReady(timeoutMs = 4000) {
+    const videoTrack = mediaStream?.getVideoTracks?.()[0];
+    if (!videoTrack || videoTrack.readyState !== 'live') throw new Error('Screen sharing has stopped. Start the session again.');
+    if (!hiddenVideo) {
+        hiddenVideo = document.createElement('video');
+        hiddenVideo.muted = true;
+        hiddenVideo.playsInline = true;
+    }
+    if (hiddenVideo.srcObject !== mediaStream) hiddenVideo.srcObject = mediaStream;
+    await hiddenVideo.play();
+    const deadline = Date.now() + timeoutMs;
+    while ((hiddenVideo.readyState < 2 || !hiddenVideo.videoWidth || !hiddenVideo.videoHeight) && Date.now() < deadline) await wait(25);
+    if (hiddenVideo.readyState < 2 || !hiddenVideo.videoWidth || !hiddenVideo.videoHeight) throw new Error('Screen capture is not ready. Please try again.');
+    if (typeof hiddenVideo.requestVideoFrameCallback === 'function') {
+        await Promise.race([new Promise(resolve => hiddenVideo.requestVideoFrameCallback(resolve)), wait(500)]);
+    } else {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    if (!offscreenCanvas) offscreenCanvas = document.createElement('canvas');
+    if (!offscreenContext) offscreenContext = offscreenCanvas.getContext('2d', { alpha: false });
+    if (!offscreenContext) throw new Error('Screen capture could not initialize.');
+    return hiddenVideo;
+}
+
+function canvasBlob(canvas, quality) {
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+}
+
+async function canvasBase64(canvas, quality) {
+    // Keep the encoded file below the managed proxy request limit. Fallbacks
+    // only affect unusually noisy/high-detail frames.
+    let blob = await canvasBlob(canvas, quality);
+    if (blob?.size > 2_000_000) blob = await canvasBlob(canvas, Math.min(quality, 0.65));
+    if (blob?.size > 2_000_000) blob = await canvasBlob(canvas, 0.5);
+    if (!blob) throw new Error('Could not encode the screenshot.');
+    if (blob.size > 2_000_000) throw new Error('Screenshot is too detailed to send. Select Medium image quality and retry.');
+    const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Could not read the screenshot.'));
+        reader.readAsDataURL(blob);
+    });
+    const base64 = String(dataUrl).split(',')[1];
+    if (!base64 || base64.length < 100) throw new Error('The captured screenshot was empty.');
+    return base64;
 }
 
 async function initializeGemini(profile = 'interview', language = 'en-US', mode = 'interview', model = 'gemini-2.5-flash', providedApiKey = null) {
@@ -328,24 +378,23 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             const useGroqForSTT = selectedMode === 'interview';
             console.log(`[macOS] Mode: ${selectedMode}, Using Groq for STT: ${useGroqForSTT}`);
 
-            // Start macOS audio capture with VAD settings and Groq mode
-            // Screen permission/capture and audio-helper setup are independent.
-            // Settle both before cleanup so a late result cannot leak capture.
-            const [audioSetup, screenSetup] = await Promise.allSettled([
-                ipcRenderer.invoke('start-macos-audio', vadEnabled, vadMode, useGroqForSTT),
-                navigator.mediaDevices.getDisplayMedia({
+            // Do not race two macOS capture/permission flows. Running the
+            // helper and display picker concurrently made both intermittent.
+            const audioResult = await ipcRenderer.invoke('start-macos-audio', vadEnabled, vadMode, useGroqForSTT);
+            if (!audioResult.success) throw new Error('Failed to start macOS audio capture: ' + audioResult.error);
+            try {
+                mediaStream = await navigator.mediaDevices.getDisplayMedia({
                     video: {
                         frameRate: 1,
                         width: { ideal: 1920 },
                         height: { ideal: 1080 },
                     },
                     audio: false, // Don't use browser audio on macOS
-                }),
-            ]);
-            if (screenSetup.status === 'fulfilled') mediaStream = screenSetup.value;
-            if (audioSetup.status === 'rejected') throw audioSetup.reason;
-            if (!audioSetup.value.success) throw new Error('Failed to start macOS audio capture: ' + audioSetup.value.error);
-            if (screenSetup.status === 'rejected') throw screenSetup.reason;
+                });
+            } catch (error) {
+                await ipcRenderer.invoke('stop-macos-audio');
+                throw error;
+            }
 
             console.log('macOS screen capture started - audio handled by SystemAudioDump');
         } else if (isLinux) {
@@ -414,6 +463,10 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             hasAudio: mediaStream.getAudioTracks().length > 0,
             videoTrack: mediaStream.getVideoTracks()[0]?.getSettings(),
         });
+
+        // Wait for a real first frame so screen analysis is usable as soon as
+        // Start Session completes instead of randomly returning "video not ready".
+        await ensureCaptureVideoReady();
 
         // Start capturing screenshots - check if manual mode
         if (screenshotIntervalSeconds === 'manual' || screenshotIntervalSeconds === 'Manual') {
@@ -825,32 +878,29 @@ function hasImageChanged(oldData, newData, threshold = 0.02) {
 
 // Capture screenshot and send to Groq Llama for interview mode
 async function captureScreenshotForGroq(imageQuality = 'medium') {
+    if (screenAnalysisPromise) return screenAnalysisPromise;
+    screenAnalysisPromise = captureScreenshotForGroqInternal(imageQuality)
+        .catch(error => {
+            console.error('[GROQ] Screenshot capture failed:', error);
+            cheddar.setStatus('Error: ' + error.message);
+            return { success: false, error: error.message };
+        })
+        .finally(() => {
+            screenAnalysisPromise = null;
+        });
+    return screenAnalysisPromise;
+}
+
+async function captureScreenshotForGroqInternal(imageQuality = 'medium') {
     cheddar.setStatus('Capturing screen...');
     console.log('[GROQ] Capturing screenshot for Llama analysis...');
     if (!mediaStream) {
         console.error('No media stream available');
         cheddar.setStatus('Error: No screen capture');
-        return;
+        return { success: false, error: 'No screen capture' };
     }
 
-    // Lazy init of video element
-    if (!hiddenVideo) {
-        hiddenVideo = document.createElement('video');
-        hiddenVideo.srcObject = mediaStream;
-        hiddenVideo.muted = true;
-        hiddenVideo.playsInline = true;
-        await hiddenVideo.play();
-
-        await new Promise(resolve => {
-            if (hiddenVideo.readyState >= 2) return resolve();
-            hiddenVideo.onloadedmetadata = () => resolve();
-        });
-
-        offscreenCanvas = document.createElement('canvas');
-        offscreenCanvas.width = hiddenVideo.videoWidth;
-        offscreenCanvas.height = hiddenVideo.videoHeight;
-        offscreenContext = offscreenCanvas.getContext('2d');
-    }
+    await ensureCaptureVideoReady();
 
     const dimensions = captureDimensions(hiddenVideo.videoWidth, hiddenVideo.videoHeight, imageQuality);
     offscreenCanvas.width = dimensions.width;
@@ -868,7 +918,8 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
         lastGroqImageData = currentImageData;
         if (!hasImageChanged(previousImageData, currentImageData, 0.015)) {
             console.log('[GROQ] Screen has not changed significantly. Skipping auto-analysis to prevent hallucinations.');
-            return;
+            cheddar.setStatus('Ready');
+            return { success: true, skipped: true };
         } else {
             // Screen HAS changed significantly (new question/page)!
             // Clear the LLM history so it analyzes the new question with a fresh, unpolluted context.
@@ -893,46 +944,22 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
             qualityValue = 0.7;
     }
 
-    offscreenCanvas.toBlob(
-        async blob => {
-            if (!blob) {
-                console.error('Failed to create blob from canvas');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const base64data = reader.result.split(',')[1];
-
-                if (!base64data || base64data.length < 100) {
-                    console.error('Invalid base64 data generated');
-                    return;
-                }
-
-                console.log('[GROQ] Sending screenshot to Llama for analysis...');
-                cheddar.setStatus('Analyzing screenshot...');
-
-                try {
-                    const result = await ipcRenderer.invoke('groq-generate-response', {
-                        message:
-                            'Analyze this screenshot and accurately answer the question/problem shown. CRITICAL ACCURACY RULE: You must read the question and every single option very carefully. Think step-by-step to arrive at the absolutely correct answer. NEVER guess. Double-check your logic. CRITICAL CHAT RULE: If the screenshot shows a chat window (Google Meet, Zoom, Teams), focus ONLY on the LATEST message visible at the BOTTOM. CRITICAL CODING RULE: If it shows code, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor and provide your solution ONLY in that language. Preserve the exact function signature.',
-                        imageBase64: base64data,
-                    });
-
-                    if (!result.success) {
-                        console.error('[GROQ] Screenshot analysis failed:', result.error);
-                        cheddar.setStatus('Error analyzing');
-                    }
-                } catch (error) {
-                    console.error('[GROQ] Screenshot analysis error:', error);
-                    cheddar.setStatus('Error: ' + error.message);
-                }
-            };
-            reader.readAsDataURL(blob);
-        },
-        'image/jpeg',
-        qualityValue
-    );
+    try {
+        const base64data = await canvasBase64(offscreenCanvas, qualityValue);
+        console.log('[GROQ] Sending screenshot to Llama for analysis...');
+        cheddar.setStatus('Analyzing screenshot...');
+        const result = await ipcRenderer.invoke('groq-generate-response', {
+            message:
+                'Analyze this screenshot and accurately answer the question/problem shown. CRITICAL ACCURACY RULE: You must read the question and every single option very carefully. Think step-by-step to arrive at the absolutely correct answer. NEVER guess. Double-check your logic. CRITICAL CHAT RULE: If the screenshot shows a chat window (Google Meet, Zoom, Teams), focus ONLY on the LATEST message visible at the BOTTOM. CRITICAL CODING RULE: If it shows code, DETECT THE EXACT PROGRAMMING LANGUAGE visible in the editor and provide your solution ONLY in that language. Preserve the exact function signature.',
+            imageBase64: base64data,
+        });
+        if (!result.success) throw new Error(result.error || 'Screen analysis failed.');
+        return result;
+    } catch (error) {
+        console.error('[GROQ] Screenshot analysis error:', error);
+        cheddar.setStatus('Error: ' + error.message);
+        return { success: false, error: error.message };
+    }
 }
 
 // Expose functions to global scope for external access
@@ -1013,30 +1040,7 @@ async function sendTextMessage(text) {
             return { success: false, error: 'No media stream' };
         }
 
-        // Lazy init of video element if needed
-        if (!hiddenVideo) {
-            hiddenVideo = document.createElement('video');
-            hiddenVideo.srcObject = mediaStream;
-            hiddenVideo.muted = true;
-            hiddenVideo.playsInline = true;
-            await hiddenVideo.play();
-
-            await new Promise(resolve => {
-                if (hiddenVideo.readyState >= 2) return resolve();
-                hiddenVideo.onloadedmetadata = () => resolve();
-            });
-
-            offscreenCanvas = document.createElement('canvas');
-            offscreenCanvas.width = hiddenVideo.videoWidth;
-            offscreenCanvas.height = hiddenVideo.videoHeight;
-            offscreenContext = offscreenCanvas.getContext('2d');
-        }
-
-        // Check if video is ready
-        if (hiddenVideo.readyState < 2) {
-            console.warn('Video not ready');
-            return { success: false, error: 'Video not ready' };
-        }
+        await ensureCaptureVideoReady();
 
         if (useGroq) {
             const dimensions = captureDimensions(hiddenVideo.videoWidth, hiddenVideo.videoHeight, currentImageQuality);
@@ -1061,22 +1065,7 @@ async function sendTextMessage(text) {
                 qualityValue = 0.7;
         }
 
-        // Convert canvas to base64
-        const blob = await new Promise(resolve => {
-            offscreenCanvas.toBlob(resolve, 'image/jpeg', qualityValue);
-        });
-
-        if (!blob) {
-            console.error('Failed to create blob');
-            return { success: false, error: 'Failed to create blob' };
-        }
-
-        const reader = new FileReader();
-        const base64data = await new Promise((resolve, reject) => {
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
+        const base64data = await canvasBase64(offscreenCanvas, qualityValue);
 
         let result;
 

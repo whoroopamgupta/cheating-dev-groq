@@ -237,7 +237,12 @@ async function transcribeWithGroq(wavBuffer) {
                     reject(new Error(`Groq Whisper rate limit: retry in ${retryAfterSeconds}s`));
                 } else {
                     console.error('[GROQ] API Error:', res.statusCode, data);
-                    reject(new Error(`Groq API error: ${res.statusCode} - ${data}`));
+                    let message = `Audio service error (${res.statusCode})`;
+                    try {
+                        const parsed = JSON.parse(data);
+                        message = parsed?.error?.message || parsed?.error || message;
+                    } catch (_) {}
+                    reject(new Error(typeof message === 'string' ? message : `Audio service error (${res.statusCode})`));
                 }
             });
         });
@@ -246,6 +251,8 @@ async function transcribeWithGroq(wavBuffer) {
             console.error('[GROQ] Request error:', e);
             reject(e);
         });
+
+        req.setTimeout(25000, () => req.destroy(new Error('Audio transcription timed out. Please retry.')));
 
         req.write(requestBody);
         req.end();
@@ -410,6 +417,7 @@ async function processAudioBuffer() {
         return transcription;
     } catch (error) {
         console.error('[GROQ] Error processing audio:', error);
+        sendToRenderer('update-status', `Audio error: ${error.message || 'Please retry.'}`);
         // Reset state even on error
         if (speechBuffer.length === 0) {
             isSpeaking = false;
