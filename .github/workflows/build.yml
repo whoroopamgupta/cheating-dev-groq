@@ -24,19 +24,19 @@ jobs:
             - name: Setup NodeJS
               uses: actions/setup-node@v4
               with:
-                  node-version: 'lts/*'
+                  # Forge 7.8.1 currently exits early during packaging on Node 26.
+                  # Keep CI on the version used by the verified local build.
+                  node-version: '24.10.0'
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm install
+              run: npm ci
 
             - name: Run tests
               run: npm test
 
             - name: Build Electron app
-              run: npm run make
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npm run make:ci
 
             - name: Upload Windows artifact
               uses: actions/upload-artifact@v4
@@ -54,11 +54,13 @@ jobs:
             - name: Setup NodeJS
               uses: actions/setup-node@v4
               with:
-                  node-version: 'lts/*'
+                  # Forge 7.8.1 currently exits early during packaging on Node 26.
+                  # Keep CI on the version used by the verified local build.
+                  node-version: '24.10.0'
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm install
+              run: npm ci
 
             - name: Run tests
               run: npm test
@@ -69,9 +71,7 @@ jobs:
                   chmod +x src/assets/AudioHelper.app/Contents/MacOS/SystemAudioDump
 
             - name: Build Electron app
-              run: npm run make
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npm run make:ci
 
             - name: Upload macOS artifact
               uses: actions/upload-artifact@v4
@@ -93,19 +93,19 @@ jobs:
             - name: Setup NodeJS
               uses: actions/setup-node@v4
               with:
-                  node-version: 'lts/*'
+                  # Forge 7.8.1 currently exits early during packaging on Node 26.
+                  # Keep CI on the version used by the verified local build.
+                  node-version: '24.10.0'
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm install
+              run: npm ci
 
             - name: Run tests
               run: npm test
 
             - name: Build Electron app
-              run: npm run make
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npm run make:ci
 
             - name: Upload Linux artifact
               uses: actions/upload-artifact@v4
