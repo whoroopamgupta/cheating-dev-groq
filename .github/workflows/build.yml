@@ -42,7 +42,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: hd-audio-process-windows
-                  path: out/make/squirrel.windows/**/*
+                  path: out/make/
                   if-no-files-found: error
 
     build-macos:
@@ -77,7 +77,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: hd-audio-process-macos
-                  path: out/make/**/*.dmg
+                  path: out/make/
                   if-no-files-found: error
 
     build-linux:
@@ -111,5 +111,5 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: hd-audio-process-linux
-                  path: out/make/*.AppImage
+                  path: out/make/
                   if-no-files-found: error
