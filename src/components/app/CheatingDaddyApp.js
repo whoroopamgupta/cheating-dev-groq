@@ -151,6 +151,14 @@ export class CheatingDaddyApp extends LitElement {
             background: transparent;
         }
 
+        .main-content.home-view {
+            margin-top: 0;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: #0b1019;
+        }
+
         .view-container {
             opacity: 1;
             transform: translateY(0);
@@ -1662,7 +1670,9 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                   ? 'onboarding-view'
                   : this.currentView === 'login'
                     ? 'login-view'
-                    : 'with-border'
+                    : this.currentView === 'main'
+                      ? 'home-view'
+                      : 'with-border'
         }`;
 
         // Hide header on login view

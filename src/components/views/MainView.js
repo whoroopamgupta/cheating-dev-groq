@@ -6,7 +6,7 @@ export class MainView extends LitElement {
     static styles = css`
         * {
             box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             cursor: default;
             user-select: none;
         }
@@ -14,59 +14,65 @@ export class MainView extends LitElement {
         :host {
             display: block;
             width: 100%;
-            max-width: 520px;
             height: 100%;
+            color: #f5f6fa;
         }
 
         .home-layout {
             display: flex;
             flex-direction: column;
+            width: 100%;
             height: 100%;
             min-height: 0;
-            gap: 14px;
+            padding: 20px 22px 16px;
+            background:
+                radial-gradient(520px 280px at 86% 4%, rgba(91, 99, 219, 0.11), transparent 68%),
+                #0b0d12;
         }
 
         .session-card {
-            position: relative;
             display: flex;
             flex: 1;
             flex-direction: column;
-            overflow: hidden;
             min-height: 0;
-            padding: 20px 22px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 18px;
-            background:
-                radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.1), transparent 42%),
-                linear-gradient(145deg, rgba(255, 255, 255, 0.048), rgba(255, 255, 255, 0.016));
-            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
         }
 
         .card-topline {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 20px;
+            min-height: 30px;
+            gap: 14px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.075);
         }
 
         .ready-state {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            color: rgba(255, 255, 255, 0.62);
+            gap: 8px;
+            color: #a1a8b8;
             font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
+            font-weight: 650;
+            letter-spacing: 0.095em;
             text-transform: uppercase;
         }
 
         .ready-dot {
-            width: 7px;
-            height: 7px;
+            width: 6px;
+            height: 6px;
+            flex-shrink: 0;
             border-radius: 50%;
             background: #34d399;
-            box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1);
+            box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.09);
+        }
+
+        .plan-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 9px;
+            min-width: 0;
         }
 
         .plan-badge {
@@ -74,13 +80,16 @@ export class MainView extends LitElement {
             align-items: center;
             gap: 6px;
             min-width: 0;
-            padding: 4px 7px;
-            border: 1px solid rgba(125, 211, 252, 0.16);
+            padding: 5px 8px;
+            overflow: hidden;
+            border: 1px solid rgba(124, 131, 255, 0.21);
             border-radius: 999px;
-            background: rgba(14, 165, 233, 0.08);
-            color: #bae6fd;
-            font-size: 9px;
+            background: rgba(124, 131, 255, 0.08);
+            color: #c6caff;
+            font-size: 10px;
             font-weight: 600;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .plan-badge svg {
@@ -89,32 +98,43 @@ export class MainView extends LitElement {
             flex-shrink: 0;
         }
 
+        .account-upgrade {
+            flex-shrink: 0;
+            color: #aeb5c5;
+            font-size: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 180ms ease;
+        }
+
+        .account-upgrade:hover {
+            color: #f5f6fa;
+        }
+
+        .session-content {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+            max-width: 450px;
+            min-height: 0;
+            margin: 0 auto;
+            padding: 24px 0 20px;
+        }
+
+        .session-primary-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 18px;
+            width: 100%;
+        }
+
         .mode-panel {
             display: flex;
             align-items: center;
-            gap: 13px;
-            min-height: 70px;
-            padding: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 13px;
-            background: rgba(2, 8, 23, 0.32);
-        }
-
-        .mode-icon {
-            display: grid;
-            place-items: center;
-            width: 38px;
-            height: 38px;
-            flex-shrink: 0;
-            border: 1px solid rgba(96, 165, 250, 0.2);
-            border-radius: 11px;
-            background: rgba(59, 130, 246, 0.1);
-            color: #93c5fd;
-        }
-
-        .mode-icon svg {
-            width: 20px;
-            height: 20px;
+            min-width: 0;
+            flex: 1;
         }
 
         .mode-copy {
@@ -125,9 +145,9 @@ export class MainView extends LitElement {
         .mode-eyebrow {
             display: block;
             margin-bottom: 4px;
-            color: rgba(255, 255, 255, 0.42);
+            color: #707889;
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 650;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
@@ -135,66 +155,150 @@ export class MainView extends LitElement {
         .mode-name {
             display: block;
             overflow: hidden;
-            color: rgba(255, 255, 255, 0.88);
-            font-size: 14px;
-            font-weight: 600;
+            color: #f5f6fa;
+            font-size: 17px;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .session-content {
-            display: flex;
-            flex: 1;
-            flex-direction: column;
-            min-height: 0;
-        }
-
         .session-guidance {
-            margin: 11px 2px 0;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
-        .session-spacer {
-            flex: 1;
-            min-height: 18px;
+            max-width: 370px;
+            margin: 13px 0 0;
+            color: #a1a8b8;
+            font-size: 13px;
+            line-height: 1.55;
         }
 
         .action-area {
-            padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            width: 100%;
+            margin-top: 13px;
         }
 
-        .plan-actions {
+        .credentials {
+            display: grid;
+            gap: 7px;
+            margin: 0 0 16px;
+        }
+
+        .credentials-label {
+            color: #a1a8b8;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            min-width: 0;
+            padding: 11px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: #11141b;
+            color: #f5f6fa;
+            font-size: 12px;
+            transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: rgba(124, 131, 255, 0.7);
+            box-shadow: 0 0 0 3px rgba(124, 131, 255, 0.12);
+            background: #171b24;
+        }
+
+        input::placeholder {
+            color: #707889;
+        }
+
+        input.api-key-error {
+            animation: blink-red 1s ease-in-out;
+            border-color: #f87171;
+        }
+
+        @keyframes blink-red {
+            0%, 100% { border-color: rgba(255, 255, 255, 0.1); }
+            50% { border-color: #f87171; background: rgba(248, 113, 113, 0.08); }
+        }
+
+        .start-button {
             display: flex;
             align-items: center;
-            gap: 7px;
-            min-width: 0;
+            justify-content: center;
+            gap: 8px;
+            min-width: 232px;
+            min-height: 44px;
+            max-width: 100%;
+            margin-left: auto;
+            padding: 11px 18px;
+            border: 1px solid rgba(185, 191, 255, 0.35);
+            border-radius: 11px;
+            background: linear-gradient(115deg, #6366f1 0%, #7c83ff 55%, #8b5cf6 100%);
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(79, 70, 229, 0.18);
+            font-size: 13px;
+            font-weight: 650;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
         }
 
-        .account-upgrade {
-            flex-shrink: 0;
-            color: rgba(191, 219, 254, 0.72);
-            font-size: 9px;
-            font-weight: 600;
+        .start-button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.06);
+            box-shadow: 0 14px 28px rgba(79, 70, 229, 0.26);
+        }
+
+        .start-button:focus-visible,
+        .logout-button:focus-visible,
+        .trial-limit button:focus-visible,
+        .account-upgrade:focus-visible,
+        .link:focus-visible {
+            outline: 2px solid #a5b4fc;
+            outline-offset: 3px;
+        }
+
+        .start-button:disabled {
+            cursor: default;
+            opacity: 0.58;
+            box-shadow: none;
+        }
+
+        .below-action {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            min-height: 16px;
+            margin-top: 9px;
+        }
+
+        .shortcut-hint,
+        .api-help {
+            margin: 0;
+            color: #707889;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        .api-help {
+            text-align: right;
+        }
+
+        .link {
+            color: #aeb5ff;
             text-decoration: none;
-        }
-
-        .account-upgrade:hover {
-            color: #dbeafe;
         }
 
         .trial-limit {
             display: flex;
             align-items: flex-start;
             gap: 9px;
-            margin-bottom: 0;
-            padding: 9px 10px;
-            border: 1px solid rgba(251, 146, 60, 0.24);
-            border-radius: 9px;
-            background: rgba(154, 52, 18, 0.12);
-            color: #fed7aa;
+            padding: 10px 0;
+            border-top: 1px solid rgba(251, 146, 60, 0.22);
+            border-bottom: 1px solid rgba(251, 146, 60, 0.16);
+            color: #fdba74;
             font-size: 11px;
             line-height: 1.45;
         }
@@ -230,117 +334,13 @@ export class MainView extends LitElement {
             color: #fff7ed;
         }
 
-        .credentials {
-            display: grid;
-            gap: 7px;
-            margin-bottom: 14px;
-        }
-
-        .credentials-label {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        input {
-            width: 100%;
-            min-width: 0;
-            padding: 10px 12px;
-            border: 1px solid var(--button-border);
-            border-radius: 8px;
-            background: var(--input-background);
-            color: var(--text-color);
-            font-size: 12px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: var(--focus-border-color);
-            box-shadow: 0 0 0 3px var(--focus-box-shadow);
-            background: var(--input-focus-background);
-        }
-
-        input::placeholder {
-            color: var(--placeholder-color);
-        }
-
-        input.api-key-error {
-            animation: blink-red 1s ease-in-out;
-            border-color: #f87171;
-        }
-
-        @keyframes blink-red {
-            0%, 100% { border-color: var(--button-border); }
-            50% { border-color: #f87171; background: rgba(248, 113, 113, 0.08); }
-        }
-
-        .start-button {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            min-height: 46px;
-            padding: 11px 18px;
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 11px;
-            background: linear-gradient(135deg, #2563eb 0%, #6366f1 52%, #7c3aed 100%);
-            color: white;
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
-            font-size: 14px;
-            font-weight: 650;
-            white-space: nowrap;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-        }
-
-        .start-button:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.07);
-            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
-        }
-
-        .start-button:disabled {
-            opacity: 0.6;
-            transform: none;
-            filter: none;
-        }
-
-        .below-action {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-top: 8px;
-            min-height: 13px;
-        }
-
-        .shortcut-hint,
-        .api-help {
-            margin: 0;
-            color: rgba(255, 255, 255, 0.38);
-            font-size: 10px;
-            line-height: 1.4;
-        }
-
-        .api-help {
-            text-align: right;
-        }
-
-        .link {
-            color: #93c5fd;
-            text-decoration: none;
-        }
-
         .account-footer {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: auto;
-            padding: 9px 11px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.025);
+            min-height: 47px;
+            padding-top: 13px;
+            border-top: 1px solid rgba(255, 255, 255, 0.075);
         }
 
         .account-avatar {
@@ -349,9 +349,10 @@ export class MainView extends LitElement {
             width: 28px;
             height: 28px;
             flex-shrink: 0;
-            border-radius: 50%;
-            background: rgba(96, 165, 250, 0.12);
-            color: #bfdbfe;
+            border: 1px solid rgba(124, 131, 255, 0.18);
+            border-radius: 9px;
+            background: #171b24;
+            color: #c6caff;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
@@ -364,15 +365,15 @@ export class MainView extends LitElement {
 
         .account-label {
             display: block;
-            margin-bottom: 1px;
-            color: rgba(255, 255, 255, 0.36);
+            margin-bottom: 2px;
+            color: #707889;
             font-size: 9px;
         }
 
         .user-email {
             display: block;
             overflow: hidden;
-            color: rgba(255, 255, 255, 0.72);
+            color: #c5cad5;
             font-size: 11px;
             font-weight: 500;
             text-overflow: ellipsis;
@@ -380,27 +381,69 @@ export class MainView extends LitElement {
         }
 
         .logout-button {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            color: rgba(255, 255, 255, 0.48);
-            padding: 6px 9px;
-            border-radius: 6px;
-            font-size: 10px;
-            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 5px;
+            flex-shrink: 0;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            background: transparent;
+            color: #9098a8;
+            padding: 6px 7px;
+            font-size: 10px;
+            transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
         }
 
         .logout-button:hover {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: rgba(239, 68, 68, 0.3);
-            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.24);
+            background: rgba(239, 68, 68, 0.08);
+            color: #fca5a5;
         }
 
         .logout-button svg {
             width: 12px;
             height: 12px;
+        }
+
+        @media (max-height: 470px) {
+            .home-layout {
+                padding-top: 14px;
+            }
+
+            .card-topline {
+                padding-bottom: 10px;
+            }
+
+            .session-content {
+                padding: 15px 0;
+            }
+
+            .session-guidance {
+                margin-top: 12px;
+            }
+
+            .session-primary-row {
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 365px) {
+            .session-primary-row {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 14px;
+            }
+
+            .start-button {
+                width: 100%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     `;
 
@@ -583,13 +626,22 @@ export class MainView extends LitElement {
         return email ? email.charAt(0) : 'U';
     }
 
+    isPaidAccount(user) {
+        if (!user) return false;
+        if (user.unlimited === true || user.paid === true) return true;
+
+        // Legacy subscribers do not have managed-account fields, but an active
+        // named plan still represents the same paid, unlimited entitlement.
+        const planName = String(user.plan_type || '').trim().toLowerCase();
+        return Boolean(planName) && !/(free|trial)/.test(planName);
+    }
+
     getCompactPlanLabel(user) {
-        const planName = user?.plan_type || (user?.unlimited ? 'Paid plan' : 'Free Trial');
-        if (user?.unlimited) {
-            return planName;
+        if (this.isPaidAccount(user)) {
+            return 'Unlimited Access';
         }
         const remainingSeconds = Math.max(0, Number(user?.remaining_seconds) || 0);
-        return `${planName} · ${Math.ceil(remainingSeconds / 60)}m left`;
+        return `Free Trial · ${Math.ceil(remainingSeconds / 60)}m left`;
     }
 
     loadLayoutMode() {
@@ -625,13 +677,14 @@ export class MainView extends LitElement {
             exam: 'Exam Assistant',
         };
         const profileLabel = profileNames[this.selectedProfile] || 'Job Interview';
+        const hasPaidAccess = this.isPaidAccount(user);
 
         return html`
             <div class="home-layout">
                 <section class="session-card">
                     <div class="card-topline">
                         <span class="ready-state"><span class="ready-dot"></span>Ready to assist</span>
-                        ${user?.account_type === 'managed' ? html`
+                        ${hasPaidAccess ? html`
                             <span class="plan-actions">
                                 <span class="plan-badge">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -640,26 +693,32 @@ export class MainView extends LitElement {
                                     </svg>
                                     ${this.getCompactPlanLabel(user)}
                                 </span>
-                                <a class="account-upgrade" href="#" @click=${event => { event.preventDefault(); this.onUpgrade(); }}>Manage →</a>
+                                ${user?.account_type === 'managed' ? html`
+                                    <a class="account-upgrade" href="#" @click=${event => { event.preventDefault(); this.onUpgrade(); }}>Manage →</a>
+                                ` : ''}
                             </span>
                         ` : ''}
                     </div>
 
                     <div class="session-content">
-                        <div class="mode-panel">
-                            <span class="mode-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M8 10h8M8 14h5"></path>
-                                    <path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-4 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
-                                </svg>
-                            </span>
-                            <span class="mode-copy">
-                                <span class="mode-eyebrow">Selected mode</span>
-                                <span class="mode-name">${profileLabel}</span>
-                            </span>
+                        <div class="session-primary-row">
+                            <div class="mode-panel">
+                                <span class="mode-copy">
+                                    <span class="mode-eyebrow">Selected mode</span>
+                                    <span class="mode-name">${profileLabel}</span>
+                                </span>
+                            </div>
+                            ${!this.sessionError ? html`
+                                <button
+                                    @click=${this.handleStartClick}
+                                    ?disabled=${this.isInitializing}
+                                    class="start-button"
+                                >
+                                    ${this.isInitializing ? 'Starting Interview Co-Pilot…' : 'Start Interview Co-Pilot'}
+                                </button>
+                            ` : ''}
                         </div>
                         <p class="session-guidance">Your session opens in a focused window and keeps your interview context ready.</p>
-                        <span class="session-spacer"></span>
 
                         ${this.sessionError ? html`
                             <div class="trial-limit" role="alert">
@@ -685,14 +744,6 @@ export class MainView extends LitElement {
                                         />
                                     </label>
                                 ` : ''}
-
-                                <button
-                                    @click=${this.handleStartClick}
-                                    ?disabled=${this.isInitializing}
-                                    class="start-button"
-                                >
-                                    ${this.isInitializing ? 'Starting Interview Co-Pilot…' : 'Start Interview Co-Pilot'}
-                                </button>
 
                                 <div class="below-action">
                                     <p class="shortcut-hint">${isMac ? '⌘ + Enter' : 'Ctrl + Enter'} to start</p>
