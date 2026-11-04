@@ -5,6 +5,7 @@ const { saveDebugAudio } = require('../audioUtils');
 const { getSystemPrompt } = require('./prompts');
 const { VADProcessor } = require('./vad');
 const groq = require('./groq');
+const { formatSpeakerResults } = require('./speakerFormat');
 
 // Conversation tracking variables
 let currentSessionId = null;
@@ -17,19 +18,6 @@ let isSessionReady = false; // Track if Live API setup is complete
 let responseCount = 0;
 const MAX_RESPONSES_BEFORE_RESET = 3; // Reset session every 3 responses for optimal performance
 let isAutoResetting = false;
-
-function formatSpeakerResults(results) {
-    let text = '';
-    for (const result of results) {
-        if (result.transcript && result.speakerId) {
-            const speakerLabel = result.speakerId === 1 ? 'Interviewer' : 'Candidate';
-            text += `[${speakerLabel}]: ${result.transcript}\n`;
-        }
-    }
-    return text;
-}
-
-module.exports.formatSpeakerResults = formatSpeakerResults;
 
 // Audio capture variables
 let systemAudioProc = null;

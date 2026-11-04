@@ -1,4 +1,4 @@
-const { formatSpeakerResults } = require('../utils/gemini');
+const { formatSpeakerResults } = require('../utils/speakerFormat');
 
 describe('formatSpeakerResults', () => {
     it('formats diarization results', () => {

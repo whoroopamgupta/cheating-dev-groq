@@ -5,7 +5,10 @@ const { JSDOM } = require('jsdom');
 describe('syntax highlighting', () => {
     it('loads highlight.js and styles code blocks', async () => {
         const htmlPath = path.join(__dirname, '../index.html');
-        const html = fs.readFileSync(htmlPath, 'utf8');
+        const html = fs
+            .readFileSync(htmlPath, 'utf8')
+            .replace('<script type="module" src="components/app/CheatingDaddyApp.js"></script>', '')
+            .replace('<script src="utils/renderer.js"></script>', '');
         const dom = new JSDOM(html, {
             runScripts: 'dangerously',
             resources: 'usable',
