@@ -390,6 +390,8 @@ export class CheatingDaddyApp extends LitElement {
         rateLimitSource: { type: String },
         // Auth validation message (shown when user is logged out due to plan expiration)
         logoutMessage: { type: String },
+        // Shown on Home when a free trial has no remaining interview time.
+        homeError: { type: String },
         // Close session modal
         _showCloseModal: { state: true },
         // Global toast notification
@@ -463,6 +465,7 @@ export class CheatingDaddyApp extends LitElement {
 
         // Auth validation message (for plan expiration)
         this.logoutMessage = '';
+        this.homeError = '';
 
         // Conversation tracking for history
         this._sessionQuestions = []; // Track questions/transcriptions for current session
@@ -1072,6 +1075,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
     async handleStart() {
         if (this._startingSession) return;
         this._startingSession = true;
+        this.homeError = '';
         try {
             const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
             if (user?.account_type === 'managed' && this.selectedProfile !== 'interview') {
@@ -1082,8 +1086,15 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             cheddar.stopCapture();
             clearTimeout(this._sessionTimeoutId);
             await window.require('electron').ipcRenderer.invoke('managed-stop');
-            this.setStatus(error.message);
-            window.alert(error.message);
+            const message = error?.message || 'Could not start the interview session.';
+            this.setStatus(message);
+            if (/interview time is used up/i.test(message)) {
+                this.homeError = 'Your 15-minute interview trial has been used. Upgrade to continue practicing.';
+                this.currentView = 'main';
+                this.requestUpdate();
+            } else {
+                window.alert(message);
+            }
         } finally {
             this._startingSession = false;
         }
@@ -1576,6 +1587,8 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                         .onLayoutModeChange=${layoutMode => this.handleLayoutModeChange(layoutMode)}
                         .onClearAndRestart=${() => this.handleClearAndRestart()}
                         .onLogout=${() => this.handleLogout()}
+                        .sessionError=${this.homeError}
+                        .onUpgrade=${() => window.require('electron').ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com/account')}
                     ></main-view>
                 `;
 

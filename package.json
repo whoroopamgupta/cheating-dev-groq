@@ -1,7 +1,7 @@
 {
     "name": "hd-audio-process",
     "productName": "HD Audio Process",
-    "version": "0.5.7",
+    "version": "0.5.8",
     "description": "HD Audio Process",
     "main": "src/index.js",
     "scripts": {

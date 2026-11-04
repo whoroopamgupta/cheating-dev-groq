@@ -311,7 +311,20 @@ export class HelpView extends LitElement {
             const loggedInUserStr = localStorage.getItem('loggedInUser');
             if (loggedInUserStr) {
                 const user = JSON.parse(loggedInUserStr);
-                if (user && user.expiry_date) {
+                if (user?.account_type === 'managed') {
+                    if (user.unlimited) {
+                        planDetails = `${user.plan_type || 'Paid plan'} · Unlimited while your plan is active`;
+                    } else {
+                        const totalSeconds = Math.max(0, Number(user.trial_seconds) || 15 * 60);
+                        const remainingSeconds = Math.min(totalSeconds, Math.max(0, Number(user.remaining_seconds) || 0));
+                        const formatDuration = seconds => {
+                            const minutes = Math.floor(seconds / 60);
+                            const remainder = Math.floor(seconds % 60);
+                            return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
+                        };
+                        planDetails = `Free Trial (${formatDuration(remainingSeconds)} remaining / ${formatDuration(totalSeconds)} total)`;
+                    }
+                } else if (user?.expiry_date) {
                     planDetails = `Valid until ${user.expiry_date}`;
                 }
             }

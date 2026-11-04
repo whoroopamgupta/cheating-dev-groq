@@ -10,55 +10,15 @@ export class MainView extends LitElement {
             user-select: none;
         }
 
-        .welcome-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-            margin-top: auto;
-        }
-
-        .welcome-text-container {
-            position: relative;
-        }
-
-        .welcome-glow {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 130%;
-            height: 150%;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
-            filter: blur(8px);
-            z-index: 0;
-            animation: pulse-glow 3s ease-in-out infinite;
-        }
-
-        .welcome {
-            font-size: 24px;
-            font-weight: 600;
-            position: relative;
-            z-index: 1;
-            margin: 0;
-        }
-
-        @keyframes pulse-glow {
-            0%,
-            100% {
-                opacity: 0.5;
-                transform: translate(-50%, -50%) scale(1);
-            }
-            50% {
-                opacity: 0.9;
-                transform: translate(-50%, -50%) scale(1.05);
-            }
-        }
-
         .input-group {
             display: flex;
             gap: 12px;
             margin-bottom: 20px;
+        }
+
+        .trial-start-group .start-button {
+            flex: 1;
+            justify-content: center;
         }
 
         .input-group input {
@@ -195,6 +155,63 @@ export class MainView extends LitElement {
             line-height: 1.5;
         }
 
+        .plan-description {
+            margin-bottom: 12px;
+        }
+
+        .account-upgrade {
+            margin-left: 6px;
+            color: #a8c7ff;
+            background: rgba(96, 165, 250, 0.12);
+            border: 1px solid rgba(147, 197, 253, 0.22);
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .account-upgrade:hover {
+            color: #dbeafe;
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(147, 197, 253, 0.38);
+        }
+
+        .trial-limit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border: 1px solid rgba(251, 146, 60, 0.32);
+            border-radius: 8px;
+            background: rgba(154, 52, 18, 0.16);
+            color: #fed7aa;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .trial-limit strong {
+            color: #ffedd5;
+        }
+
+        .trial-limit button {
+            margin-left: auto;
+            flex-shrink: 0;
+            border: 1px solid rgba(251, 146, 60, 0.36);
+            border-radius: 6px;
+            background: rgba(251, 146, 60, 0.13);
+            color: #fed7aa;
+            padding: 5px 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .trial-limit button:hover {
+            background: rgba(251, 146, 60, 0.24);
+            color: #fff7ed;
+        }
+
         .link {
             color: var(--link-color);
             text-decoration: underline;
@@ -263,6 +280,8 @@ export class MainView extends LitElement {
         showApiKeyError: { type: Boolean },
         onClearAndRestart: { type: Function },
         selectedProfile: { type: String },
+        sessionError: { type: String },
+        onUpgrade: { type: Function },
     };
 
     constructor() {
@@ -274,6 +293,8 @@ export class MainView extends LitElement {
         this.onLogout = () => {};
         this.showApiKeyError = false;
         this.onClearAndRestart = () => {};
+        this.sessionError = '';
+        this.onUpgrade = () => {};
         this.boundKeydownHandler = this.handleKeydown.bind(this);
         // Load selected profile from localStorage (default to interview on first run)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
@@ -489,15 +510,16 @@ export class MainView extends LitElement {
         </svg>`;
 
         if (isMac) {
-            return html`Start Session <span class="shortcut-icons">${cmdIcon}${enterIcon}</span>`;
+            return html`Start Interview Co-Pilot <span class="shortcut-icons">${cmdIcon}${enterIcon}</span>`;
         } else {
-            return html`Start Session <span class="shortcut-icons">Ctrl${enterIcon}</span>`;
+            return html`Start Interview Co-Pilot <span class="shortcut-icons">Ctrl${enterIcon}</span>`;
         }
     }
 
     render() {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const user = this.getLoggedInUser();
+        const isTrialUser = user?.account_type === 'managed' && !user.unlimited;
         // API key included applies ONLY to Groq API (non-exam mode)
         const apiKeyIncluded = user?.account_type === 'managed' || (!this.isExamMode() && isApiKeyIncluded(user) && Boolean(user?.api_key));
 
@@ -514,26 +536,28 @@ export class MainView extends LitElement {
         const apiType = this.isExamMode() ? 'Gemini' : 'Groq';
 
         return html`
-            <div class="welcome-container">
-                <div class="welcome-text-container">
-                    <div class="welcome-glow"></div>
-                    <div class="welcome">Welcome</div>
-                </div>
-            </div>
             <p class="description" style="margin-bottom: 12px; font-size: 12px; opacity: 0.7;">
                 Mode: <strong>${profileLabel}</strong> (using ${apiType} API)
             </p>
 
-            ${user?.account_type === 'managed' ? html`<p class="description">${user.plan_type}: ${user.unlimited ? 'Unlimited access' : `${Math.floor((user.remaining_seconds || 0) / 60)} minutes remaining`}. <a href="#" @click=${() => window.require('electron').ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com/account')}>Account / Upgrade</a></p>` : ''}
-            <div class="input-group">
-                <input
-                    type="password"
-                    placeholder="${apiKeyIncluded ? 'You are using Interview Cracked API Key' : this.getApiKeyPlaceholder()}"
-                    .value=${this.getCurrentApiKey()}
-                    @input=${this.handleInput}
-                    class="${this.showApiKeyError ? 'api-key-error' : ''}"
-                    ?disabled=${apiKeyIncluded}
-                />
+            ${user?.account_type === 'managed' ? html`<p class="description plan-description">${user.plan_type}: ${user.unlimited ? 'Unlimited access' : `${Math.floor((user.remaining_seconds || 0) / 60)} minutes remaining`}. <a class="account-upgrade" href="#" @click=${event => { event.preventDefault(); this.onUpgrade(); }}>Account / Upgrade</a></p>` : ''}
+            ${this.sessionError ? html`
+                <div class="trial-limit" role="alert">
+                    <span><strong>Free trial complete.</strong> ${this.sessionError}</span>
+                    <button @click=${this.onUpgrade}>Explore plans</button>
+                </div>
+            ` : ''}
+            <div class="input-group ${isTrialUser ? 'trial-start-group' : ''}">
+                ${!isTrialUser ? html`
+                    <input
+                        type="password"
+                        placeholder="${apiKeyIncluded ? 'You are using Interview Cracked API Key' : this.getApiKeyPlaceholder()}"
+                        .value=${this.getCurrentApiKey()}
+                        @input=${this.handleInput}
+                        class="${this.showApiKeyError ? 'api-key-error' : ''}"
+                        ?disabled=${apiKeyIncluded}
+                    />
+                ` : ''}
                 <button
                     @click=${this.handleStartClick}
                     ?disabled=${this.isInitializing}
