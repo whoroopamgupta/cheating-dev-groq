@@ -2,8 +2,6 @@
 // Voice Activity Detection (VAD) processor for Cheating Daddy
 // Based on the rholive reference implementation's audio segmentation approach
 
-const VAD = require('@ricky0123/vad-node');
-
 const VADState = {
     IDLE: 'IDLE', // Not listening for speech
     PAUSED: 'PAUSED', // Manually paused by user (mic off)
@@ -60,6 +58,10 @@ class VADProcessor {
 
     async initializeVAD() {
         try {
+            // Load the native ONNX binding only when VAD is actually used. Keeping
+            // this out of module initialization lets configuration and class tests
+            // run on hosts where the platform-specific binding is unavailable.
+            const VAD = require('@ricky0123/vad-node');
             console.log(`🔧 [VAD INIT] Initializing VAD with mode: "${this.mode}"`);
             // The @ricky0123/vad-node library uses a static async new() method
             this.vad = await VAD.NonRealTimeVAD.new(this.vadConfig);
