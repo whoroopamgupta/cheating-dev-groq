@@ -23,19 +23,23 @@ export class MainView extends LitElement {
             flex-direction: column;
             height: 100%;
             min-height: 0;
-            gap: 8px;
+            gap: 14px;
         }
 
         .session-card {
             position: relative;
+            display: flex;
+            flex: 1;
+            flex-direction: column;
             overflow: hidden;
-            padding: 13px 14px;
-            border: 1px solid rgba(255, 255, 255, 0.11);
-            border-radius: 14px;
+            min-height: 0;
+            padding: 20px 22px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
             background:
-                radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.12), transparent 38%),
-                linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+                radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.1), transparent 42%),
+                linear-gradient(145deg, rgba(255, 255, 255, 0.048), rgba(255, 255, 255, 0.016));
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
         }
 
         .card-topline {
@@ -43,7 +47,7 @@ export class MainView extends LitElement {
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            margin-bottom: 9px;
+            margin-bottom: 20px;
         }
 
         .ready-state {
@@ -85,48 +89,32 @@ export class MainView extends LitElement {
             flex-shrink: 0;
         }
 
-        .session-title {
-            margin: 0;
-            color: var(--text-color);
-            font-size: 20px;
-            font-weight: 650;
-            letter-spacing: -0.025em;
-        }
-
-        .session-subtitle {
-            margin: 3px 0 10px;
-            max-width: 410px;
-            color: var(--description-color);
-            font-size: 11px;
-            line-height: 1.4;
-        }
-
         .mode-panel {
             display: flex;
             align-items: center;
-            gap: 11px;
-            margin-bottom: 10px;
-            padding: 7px 9px;
+            gap: 13px;
+            min-height: 70px;
+            padding: 14px;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            background: rgba(0, 0, 0, 0.16);
+            border-radius: 13px;
+            background: rgba(2, 8, 23, 0.32);
         }
 
         .mode-icon {
             display: grid;
             place-items: center;
-            width: 30px;
-            height: 30px;
+            width: 38px;
+            height: 38px;
             flex-shrink: 0;
             border: 1px solid rgba(96, 165, 250, 0.2);
-            border-radius: 9px;
+            border-radius: 11px;
             background: rgba(59, 130, 246, 0.1);
             color: #93c5fd;
         }
 
         .mode-icon svg {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
         }
 
         .mode-copy {
@@ -136,9 +124,9 @@ export class MainView extends LitElement {
 
         .mode-eyebrow {
             display: block;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             color: rgba(255, 255, 255, 0.42);
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
@@ -148,20 +136,34 @@ export class MainView extends LitElement {
             display: block;
             overflow: hidden;
             color: rgba(255, 255, 255, 0.88);
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .provider-label {
-            flex-shrink: 0;
-            padding: 4px 7px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.055);
-            color: rgba(255, 255, 255, 0.48);
-            font-size: 9px;
-            font-weight: 600;
+        .session-content {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .session-guidance {
+            margin: 11px 2px 0;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .session-spacer {
+            flex: 1;
+            min-height: 18px;
+        }
+
+        .action-area {
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .plan-actions {
@@ -231,7 +233,7 @@ export class MainView extends LitElement {
         .credentials {
             display: grid;
             gap: 7px;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
 
         .credentials-label {
@@ -279,14 +281,14 @@ export class MainView extends LitElement {
             justify-content: center;
             gap: 8px;
             width: 100%;
-            min-height: 42px;
-            padding: 10px 16px;
+            min-height: 46px;
+            padding: 11px 18px;
             border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 10px;
+            border-radius: 11px;
             background: linear-gradient(135deg, #2563eb 0%, #6366f1 52%, #7c3aed 100%);
             color: white;
             box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 650;
             white-space: nowrap;
             transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
@@ -304,31 +306,12 @@ export class MainView extends LitElement {
             filter: none;
         }
 
-        .shortcut-icons {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-            margin-left: 2px;
-            padding-left: 8px;
-            border-left: 1px solid rgba(255, 255, 255, 0.22);
-            color: rgba(255, 255, 255, 0.72);
-        }
-
-        .shortcut-icons svg {
-            width: 13px;
-            height: 13px;
-        }
-
-        .shortcut-icons svg path {
-            stroke: currentColor;
-        }
-
         .below-action {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            margin-top: 6px;
+            margin-top: 8px;
             min-height: 13px;
         }
 
@@ -336,7 +319,7 @@ export class MainView extends LitElement {
         .api-help {
             margin: 0;
             color: rgba(255, 255, 255, 0.38);
-            font-size: 9px;
+            font-size: 10px;
             line-height: 1.4;
         }
 
@@ -354,7 +337,7 @@ export class MainView extends LitElement {
             align-items: center;
             gap: 10px;
             margin-top: auto;
-            padding: 7px 9px;
+            padding: 9px 11px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.025);
@@ -540,20 +523,12 @@ export class MainView extends LitElement {
 
     // Get the API key placeholder text
     getApiKeyPlaceholder() {
-        if (this.isExamMode()) {
-            return 'Enter your Gemini API Key';
-        } else {
-            return 'Enter your Groq API Key';
-        }
+        return 'Enter your API key';
     }
 
     // Get the help link text
     getApiKeyHelpText() {
-        if (this.isExamMode()) {
-            return 'Get Gemini API key';
-        } else {
-            return 'Get Groq API key';
-        }
+        return 'Get an API key';
     }
 
     async handleStartClick() {
@@ -634,52 +609,6 @@ export class MainView extends LitElement {
         }, 1000);
     }
 
-    getStartButtonText() {
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-
-        const cmdIcon = html`<svg width="14px" height="14px" viewBox="0 0 24 24" stroke-width="2" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path d="M15 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path
-                d="M9 6C9 4.34315 7.65685 3 6 3C4.34315 3 3 4.34315 3 6C3 7.65685 4.34315 9 6 9H18C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            ></path>
-            <path
-                d="M9 18C9 19.6569 7.65685 21 6 21C4.34315 21 3 19.6569 3 18C3 16.3431 4.34315 15 6 15H18C19.6569 15 21 16.3431 21 18C21 19.6569 19.6569 21 18 21C16.3431 21 15 19.6569 15 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            ></path>
-        </svg>`;
-
-        const enterIcon = html`<svg width="14px" height="14px" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M10.25 19.25L6.75 15.75L10.25 12.25"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            ></path>
-            <path
-                d="M6.75 15.75H12.75C14.9591 15.75 16.75 13.9591 16.75 11.75V4.75"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            ></path>
-        </svg>`;
-
-        if (isMac) {
-            return html`Start Interview Co-Pilot <span class="shortcut-icons">${cmdIcon}${enterIcon}</span>`;
-        } else {
-            return html`Start Interview Co-Pilot <span class="shortcut-icons">Ctrl${enterIcon}</span>`;
-        }
-    }
-
     render() {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const user = this.getLoggedInUser();
@@ -688,15 +617,14 @@ export class MainView extends LitElement {
 
         const profileNames = {
             interview: 'Job Interview',
-            'exam-groq': 'Exam Assistant (Groq)',
+            'exam-groq': 'Exam Assistant',
             sales: 'Sales Call',
             meeting: 'Business Meeting',
             presentation: 'Presentation',
             negotiation: 'Negotiation',
-            exam: 'Exam Assistant (Gemini)',
+            exam: 'Exam Assistant',
         };
         const profileLabel = profileNames[this.selectedProfile] || 'Job Interview';
-        const apiType = this.isExamMode() ? 'Gemini' : 'Groq';
 
         return html`
             <div class="home-layout">
@@ -717,62 +645,64 @@ export class MainView extends LitElement {
                         ` : ''}
                     </div>
 
-                    <h1 class="session-title">Interview Co-Pilot</h1>
-                    <p class="session-subtitle">Real-time answers, talking points, and screen analysis.</p>
+                    <div class="session-content">
+                        <div class="mode-panel">
+                            <span class="mode-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8 10h8M8 14h5"></path>
+                                    <path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-4 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
+                                </svg>
+                            </span>
+                            <span class="mode-copy">
+                                <span class="mode-eyebrow">Selected mode</span>
+                                <span class="mode-name">${profileLabel}</span>
+                            </span>
+                        </div>
+                        <p class="session-guidance">Your session opens in a focused window and keeps your interview context ready.</p>
+                        <span class="session-spacer"></span>
 
-                    <div class="mode-panel">
-                        <span class="mode-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M8 10h8M8 14h5"></path>
-                                <path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-4 3v-3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
-                            </svg>
-                        </span>
-                        <span class="mode-copy">
-                            <span class="mode-eyebrow">Current mode</span>
-                            <span class="mode-name">${profileLabel}</span>
-                        </span>
-                        <span class="provider-label">${apiType}</span>
+                        ${this.sessionError ? html`
+                            <div class="trial-limit" role="alert">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="9"></circle>
+                                    <path d="M12 8v5M12 16h.01"></path>
+                                </svg>
+                                <span class="trial-limit-copy"><strong>Free trial complete</strong>${this.sessionError}</span>
+                                <button @click=${this.onUpgrade}>Explore plans →</button>
+                            </div>
+                        ` : html`
+                            <div class="action-area">
+                                ${user?.account_type !== 'managed' ? html`
+                                    <label class="credentials">
+                                        <span class="credentials-label">${apiKeyIncluded ? 'AI access' : 'API key'}</span>
+                                        <input
+                                            type="password"
+                                            placeholder="${apiKeyIncluded ? 'Included with your Interview Cracked account' : this.getApiKeyPlaceholder()}"
+                                            .value=${this.getCurrentApiKey()}
+                                            @input=${this.handleInput}
+                                            class="${this.showApiKeyError ? 'api-key-error' : ''}"
+                                            ?disabled=${apiKeyIncluded}
+                                        />
+                                    </label>
+                                ` : ''}
+
+                                <button
+                                    @click=${this.handleStartClick}
+                                    ?disabled=${this.isInitializing}
+                                    class="start-button"
+                                >
+                                    ${this.isInitializing ? 'Starting Interview Co-Pilot…' : 'Start Interview Co-Pilot'}
+                                </button>
+
+                                <div class="below-action">
+                                    <p class="shortcut-hint">${isMac ? '⌘ + Enter' : 'Ctrl + Enter'} to start</p>
+                                    ${!apiKeyIncluded ? html`
+                                        <p class="api-help">Need a key? <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span></p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `}
                     </div>
-
-                    ${this.sessionError ? html`
-                        <div class="trial-limit" role="alert">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="9"></circle>
-                                <path d="M12 8v5M12 16h.01"></path>
-                            </svg>
-                            <span class="trial-limit-copy"><strong>Free trial complete</strong>${this.sessionError}</span>
-                            <button @click=${this.onUpgrade}>Explore plans →</button>
-                        </div>
-                    ` : html`
-                        ${user?.account_type !== 'managed' ? html`
-                            <label class="credentials">
-                                <span class="credentials-label">${apiKeyIncluded ? 'AI access' : `${apiType} API key`}</span>
-                                <input
-                                    type="password"
-                                    placeholder="${apiKeyIncluded ? 'Included with your Interview Cracked account' : this.getApiKeyPlaceholder()}"
-                                    .value=${this.getCurrentApiKey()}
-                                    @input=${this.handleInput}
-                                    class="${this.showApiKeyError ? 'api-key-error' : ''}"
-                                    ?disabled=${apiKeyIncluded}
-                                />
-                            </label>
-                        ` : ''}
-
-                        <button
-                            @click=${this.handleStartClick}
-                            ?disabled=${this.isInitializing}
-                            class="start-button"
-                        >
-                            ${this.isInitializing ? 'Starting Interview Co-Pilot…' : this.getStartButtonText()}
-                        </button>
-
-                        <div class="below-action">
-                            <p class="shortcut-hint">${isMac ? '⌘⌥R' : 'Ctrl+Alt+R'} clears and restarts a session</p>
-                            ${!apiKeyIncluded ? html`
-                                <p class="api-help">Need a key? <span @click=${this.handleAPIKeyHelpClick} class="link">${this.getApiKeyHelpText()}</span></p>
-                            ` : ''}
-                        </div>
-                    `}
                 </section>
 
                 <footer class="account-footer">
