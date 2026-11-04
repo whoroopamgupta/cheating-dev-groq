@@ -7,6 +7,10 @@ on:
 
 jobs:
     build:
+        env:
+            # Unit tests do not initialize VAD. Avoid onnxruntime-node's broken
+            # optional GPU provider download on Linux CI.
+            ONNXRUNTIME_NODE_INSTALL: skip
         strategy:
             fail-fast: true
             matrix:
