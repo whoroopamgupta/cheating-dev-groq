@@ -11,6 +11,7 @@ const WHISPER_MODEL = 'whisper-large-v3-turbo';
 let speechBuffer = []; // Only contains speech segments
 let contextBuffer = []; // Rolling buffer for pre-speech context
 let isProcessing = false;
+let flushRequested = false;
 let groqApiKey = null;
 
 // Minimum audio duration in seconds before sending to Groq (to avoid sending tiny clips)
@@ -130,6 +131,8 @@ function pcmToWav(pcmBuffer) {
  * @returns {Promise<string>} - Transcribed text
  */
 async function transcribeWithGroq(wavBuffer) {
+    const startedAt = Date.now();
+    sendToRenderer('update-status', 'Transcribing...');
     return new Promise((resolve, reject) => {
         if (!groqApiKey) {
             reject(new Error('Groq API key not initialized'));
@@ -175,6 +178,7 @@ async function transcribeWithGroq(wavBuffer) {
         };
 
         const req = https.request(options, res => {
+            console.info('[Groq latency]', { stage: 'transcription headers', ms: Date.now() - startedAt, server: res.headers?.['server-timing'] });
             let data = '';
 
             res.on('data', chunk => {
@@ -186,6 +190,7 @@ async function transcribeWithGroq(wavBuffer) {
                     try {
                         const response = JSON.parse(data);
                         const transcription = response.text || '';
+                        console.info('[Groq latency]', { stage: 'transcription complete', ms: Date.now() - startedAt });
                         console.log('\n========================================');
                         console.log('[GROQ WHISPER] TRANSCRIPTION RESULT:');
                         console.log('----------------------------------------');
@@ -324,7 +329,8 @@ async function checkAndFlush() {
     // 1. Have enough audio AND sustained silence after speech
     // 2. Buffer too large (>20s) - force flush
     const shouldFlush =
-        (speechDuration >= MIN_AUDIO_DURATION_SECONDS && timeSinceSpeech >= SILENCE_AFTER_SPEECH_MS && !isSpeaking) || speechDuration > 20;
+        (speechDuration >= MIN_AUDIO_DURATION_SECONDS && (flushRequested || (timeSinceSpeech >= SILENCE_AFTER_SPEECH_MS && !isSpeaking))) ||
+        speechDuration > 20;
 
     if (shouldFlush) {
         if (speechDuration > 20) {
@@ -368,6 +374,7 @@ async function processAudioBuffer() {
 
         // Clear buffer
         speechBuffer = [];
+        flushRequested = false;
 
         // Check audio energy (RMS) to avoid sending silence
         const rms = calculateRMS(combinedPcm);
@@ -411,6 +418,8 @@ async function processAudioBuffer() {
         return null;
     } finally {
         isProcessing = false;
+        // A completed VAD segment may arrive while Whisper is still working.
+        if (flushRequested) void checkAndFlush();
     }
 }
 
@@ -419,60 +428,23 @@ async function processAudioBuffer() {
  * @returns {Promise<string|null>}
  */
 async function flushAudioBuffer() {
-    if (speechBuffer.length === 0) {
-        return null;
-    }
-
-    // Cancel any pending check timer
-    if (checkTimer) {
-        clearInterval(checkTimer);
-        checkTimer = null;
-    }
-
-    // Force process even if below minimum duration
-    const totalBytes = speechBuffer.reduce((sum, buf) => sum + buf.length, 0);
-    const totalDuration = totalBytes / (SAMPLE_RATE * BYTES_PER_SAMPLE);
-
-    // Need at least 0.5 seconds for meaningful transcription
-    if (totalDuration < 0.5) {
-        // Too short - silently discard (don't spam logs)
+    // VAD/manual commit already detected the end of this utterance. Do not add
+    // another silence interval, or overlap an in-flight transcription.
+    flushRequested = true;
+    if (!isProcessing && getBufferDuration() < MIN_AUDIO_DURATION_SECONDS) {
         speechBuffer = [];
         contextBuffer = [];
+        flushRequested = false;
         return null;
     }
-
-    isProcessing = true;
-    console.log(`\n[GROQ] Flush processing ${totalDuration.toFixed(2)}s of audio...`);
-
-    try {
-        const combinedPcm = Buffer.concat(speechBuffer);
-        speechBuffer = [];
-        contextBuffer = [];
-
-        const wavBuffer = pcmToWav(combinedPcm);
-        const transcription = await transcribeWithGroq(wavBuffer);
-
-        if (transcription && transcription.trim()) {
-            sendToRenderer('groq-transcription', transcription);
-        }
-
-        // Reset state
-        isSpeaking = false;
-        lastSpeechTime = 0;
-
-        return transcription;
-    } catch (error) {
-        console.error('[GROQ] Error flushing audio:', error);
-        return null;
-    } finally {
-        isProcessing = false;
-    }
+    return processAudioBuffer();
 }
 
 /**
  * Clear the audio buffer without processing
  */
 function clearAudioBuffer() {
+    flushRequested = false;
     speechBuffer = [];
     contextBuffer = [];
     isSpeaking = false;
@@ -636,6 +608,8 @@ RULES:
  * @returns {Promise<string>} - The generated response
  */
 async function generateWithLlama(userMessage, imageBase64 = null) {
+    const startedAt = Date.now();
+    let firstTokenAt = null;
     return new Promise((resolve, reject) => {
         if (!groqApiKey) {
             reject(new Error('Groq API key not initialized'));
@@ -702,6 +676,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         if (modelToUse === 'qwen/qwen3.8-27b' || modelToUse.includes('gpt-oss-')) {
             payload.reasoning_format = 'hidden';
         }
+        if (modelToUse.includes('gpt-oss-')) payload.reasoning_effort = 'low';
 
         const requestBody = JSON.stringify(payload);
 
@@ -728,6 +703,12 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         let streamFailed = false;
 
         const req = https.request(options, res => {
+            console.info('[Groq latency]', {
+                stage: 'completion headers',
+                model: modelToUse,
+                ms: Date.now() - startedAt,
+                server: res.headers?.['server-timing'],
+            });
             res.setEncoding('utf8');
             res.on('error', reject);
             res.on('aborted', () => reject(new Error('Response stream interrupted')));
@@ -760,6 +741,11 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                             }
                             const content = parsed.choices?.[0]?.delta?.content;
                             if (content) {
+                                if (firstTokenAt === null) {
+                                    firstTokenAt = Date.now();
+                                    console.info('[Groq latency]', { stage: 'first answer token', model: modelToUse, ms: firstTokenAt - startedAt });
+                                    sendToRenderer('update-status', 'Answering...');
+                                }
                                 fullResponse += content;
                                 // Stream to renderer for live display
                                 if (Date.now() - lastRenderAt >= 50) {
@@ -809,6 +795,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
 
                         // Send final response to renderer
                         sendToRenderer('update-response', fullResponse);
+                        console.info('[Groq latency]', { stage: 'answer complete', model: modelToUse, ms: Date.now() - startedAt });
                         sendToRenderer('update-status', 'Ready');
                         resolve(fullResponse);
                     } else {
@@ -903,11 +890,12 @@ function setupGroqIpcHandlers() {
         }
     });
 
-    ipcMain.handle('groq-add-audio', async (event, { data }) => {
+    ipcMain.handle('groq-add-audio', async (event, { data, committed = false }) => {
         try {
             // data is base64 encoded PCM
             const pcmBuffer = Buffer.from(data, 'base64');
             addAudioChunk(pcmBuffer);
+            if (committed === true) await flushAudioBuffer();
             return { success: true };
         } catch (error) {
             console.error('[GROQ] Add audio error:', error);

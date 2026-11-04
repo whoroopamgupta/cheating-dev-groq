@@ -1,20 +1,33 @@
 const { ipcMain, BrowserWindow } = require('electron');
 const BASE = 'https://www.interviewcracked.com/api/account';
-let credentials = null, session = null, heartbeat = null, deadline = null;
-let generation = 0, starting = false, refreshPromise = null;
-function notify(channel, data) { for (const win of BrowserWindow.getAllWindows()) win.webContents.send(channel, data); }
+let credentials = null,
+    session = null,
+    heartbeat = null,
+    deadline = null;
+let generation = 0,
+    starting = false,
+    refreshPromise = null;
+function notify(channel, data) {
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send(channel, data);
+}
 async function request(path, body, retry = true, identity = credentials) {
     if (!identity || identity !== credentials) throw new Error('Please sign in again');
     const response = await fetch(`${BASE}${path}`, {
-        method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${identity.access_token}`, 'Content-Type': 'application/json' },
-        ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(8000),
+        method: body ? 'POST' : 'GET',
+        headers: { Authorization: `Bearer ${identity.access_token}`, 'Content-Type': 'application/json' },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: AbortSignal.timeout(8000),
     });
     if (identity !== credentials) throw new Error('Account changed. Please try again.');
     if (response.status === 401 && retry) {
         if (!refreshPromise) {
             refreshPromise = (async () => {
-                const refreshed = await fetch(`${BASE}/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh_token: identity.refresh_token }), signal: AbortSignal.timeout(8000) });
+                const refreshed = await fetch(`${BASE}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: identity.refresh_token }),
+                    signal: AbortSignal.timeout(8000),
+                });
                 const data = await refreshed.json();
                 if (!refreshed.ok || !data.session?.access_token) throw new Error('Please sign in again');
                 if (identity !== credentials) throw new Error('Account changed. Please try again.');
@@ -23,7 +36,11 @@ async function request(path, body, retry = true, identity = credentials) {
             })();
         }
         const pendingRefresh = refreshPromise;
-        try { await pendingRefresh; } finally { if (refreshPromise === pendingRefresh) refreshPromise = null; }
+        try {
+            await pendingRefresh;
+        } finally {
+            if (refreshPromise === pendingRefresh) refreshPromise = null;
+        }
         return request(path, body, false, identity);
     }
     const data = await response.json();
@@ -43,15 +60,35 @@ function arm(data, startedAt) {
     notify('managed-usage', data);
 }
 async function stop() {
-    generation++; starting = false;
-    clearInterval(heartbeat); clearTimeout(deadline); heartbeat = null;
-    const old = session; session = null;
-    if (old) { try { await request('/session', { action: 'stop', sessionId: old.session_id }); } catch { /* server lease bounds disconnect usage */ } }
+    generation++;
+    starting = false;
+    clearInterval(heartbeat);
+    clearTimeout(deadline);
+    heartbeat = null;
+    const old = session;
+    session = null;
+    if (old) {
+        try {
+            await request('/session', { action: 'stop', sessionId: old.session_id });
+        } catch {
+            /* server lease bounds disconnect usage */
+        }
+    }
 }
-function expire(message) { void stop(); notify('managed-session-ended', message); }
+function expire(message) {
+    void stop();
+    notify('managed-session-ended', message);
+}
 function proxyOptions() {
     if (!session || !credentials) throw new Error('Start an interview session first');
-    return { url: `${BASE}/groq`, headers: { Authorization: `Bearer ${credentials.access_token}`, 'X-Session-Id': session.session_id } };
+    return {
+        url: `${BASE}/groq`,
+        headers: {
+            Authorization: `Bearer ${credentials.access_token}`,
+            'X-Session-Id': session.session_id,
+            ...(session.session_access ? { 'X-Session-Access': session.session_access } : {}),
+        },
+    };
 }
 function setup() {
     ipcMain.handle('managed-auth', async (_event, value) => {
@@ -59,7 +96,8 @@ function setup() {
         if (value !== null && (typeof value?.access_token !== 'string' || typeof value?.refresh_token !== 'string')) {
             throw new Error('Invalid account session. Please sign in again.');
         }
-        credentials = value ? { ...value } : null; refreshPromise = null;
+        credentials = value ? { ...value } : null;
+        refreshPromise = null;
         if (!credentials) return null;
         const account = await request('');
         return { ...account, session: { ...credentials } };
@@ -68,7 +106,9 @@ function setup() {
     ipcMain.handle('managed-start', async (_event, profile) => {
         if (session || starting) throw new Error('Session already active');
         if (profile !== 'interview') throw new Error('Select Interview mode to use your account minutes.');
-        const current = ++generation, identity = credentials, startedAt = Date.now();
+        const current = ++generation,
+            identity = credentials,
+            startedAt = Date.now();
         starting = true;
         let data;
         try {
@@ -76,19 +116,31 @@ function setup() {
             if (current !== generation) throw new Error('Session start cancelled.');
             arm(data, startedAt);
         } catch (error) {
-            if (data?.session_id) { try { await request('/session', { action: 'stop', sessionId: data.session_id }, true, identity); } catch { /* lease expires */ } }
+            if (data?.session_id) {
+                try {
+                    await request('/session', { action: 'stop', sessionId: data.session_id }, true, identity);
+                } catch {
+                    /* lease expires */
+                }
+            }
             throw error;
-        } finally { if (current === generation) starting = false; }
+        } finally {
+            if (current === generation) starting = false;
+        }
         let pending = false;
         heartbeat = setInterval(async () => {
             if (pending || !session || current !== generation) return;
             pending = true;
-            const startedAt = Date.now(), sessionId = session.session_id;
+            const startedAt = Date.now(),
+                sessionId = session.session_id;
             try {
-                const data = await request('/session', { action:'heartbeat',sessionId });
+                const data = await request('/session', { action: 'heartbeat', sessionId });
                 if (current === generation && session?.session_id === sessionId) arm(data, startedAt);
-            } catch (error) { if (current === generation) expire(error.message); }
-            finally { pending = false; }
+            } catch (error) {
+                if (current === generation) expire(error.message);
+            } finally {
+                pending = false;
+            }
         }, 10000);
         return data;
     });

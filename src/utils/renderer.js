@@ -1,6 +1,7 @@
 // renderer.js
 const { ipcRenderer } = require('electron');
 const path = require('path');
+const { requiresScreenContext, captureDimensions } = require(path.join(__dirname, 'utils', 'requestPolicy.js'));
 
 // Import VAD functionality
 let VADProcessor;
@@ -465,8 +466,8 @@ function setupLinuxSystemAudioProcessing() {
 
                             if (useGroqForSTT) {
                                 // Interview mode: Send to Groq for transcription
-                                // Add audio to buffer - auto-flush will process when enough audio accumulates
-                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data });
+                                // VAD already committed this utterance; transcribe immediately.
+                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data, committed: true });
                                 console.log('[GROQ] VAD segment added, duration:', metadata?.duration || 'unknown');
                             } else {
                                 // Exam mode: Send to Gemini
@@ -588,8 +589,8 @@ function setupWindowsLoopbackProcessing() {
 
                             if (useGroqForSTT) {
                                 // Interview mode: Send to Groq for transcription
-                                // Add audio to buffer - auto-flush will process when enough audio accumulates
-                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data });
+                                // VAD already committed this utterance; transcribe immediately.
+                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data, committed: true });
                                 console.log('[GROQ] VAD segment added, duration:', metadata?.duration || 'unknown');
                             } else {
                                 // Exam mode: Send to Gemini
@@ -804,6 +805,7 @@ let lastGroqImageData = null;
 
 function hasImageChanged(oldData, newData, threshold = 0.02) {
     if (!oldData) return true;
+    if (oldData.width !== newData.width || oldData.height !== newData.height) return true;
     let diffCount = 0;
     const len = newData.data.length;
     // Sample pixels for performance (check every 4th pixel = step of 16 in ImageData)
@@ -823,6 +825,7 @@ function hasImageChanged(oldData, newData, threshold = 0.02) {
 
 // Capture screenshot and send to Groq Llama for interview mode
 async function captureScreenshotForGroq(imageQuality = 'medium') {
+    cheddar.setStatus('Capturing screen...');
     console.log('[GROQ] Capturing screenshot for Llama analysis...');
     if (!mediaStream) {
         console.error('No media stream available');
@@ -849,10 +852,10 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
         offscreenContext = offscreenCanvas.getContext('2d');
     }
 
-    offscreenContext.drawImage(hiddenVideo, 0, 0);
-
-    // Grab current image data to compare with the last frame
-    const currentImageData = offscreenContext.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    const dimensions = captureDimensions(hiddenVideo.videoWidth, hiddenVideo.videoHeight, imageQuality);
+    offscreenCanvas.width = dimensions.width;
+    offscreenCanvas.height = dimensions.height;
+    offscreenContext.drawImage(hiddenVideo, 0, 0, dimensions.width, dimensions.height);
 
     // Check if we're in auto-capture mode (exam-groq)
     const isAutoCapture = localStorage.getItem('examGroqAutoCapture') === 'true';
@@ -860,7 +863,10 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
 
     // If it's an auto-captured frame and the image hasn't meaningfully changed, skip it
     if (isAutoCapture && selectedMode === 'interview') {
-        if (!hasImageChanged(lastGroqImageData, currentImageData, 0.015)) {
+        const currentImageData = offscreenContext.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        const previousImageData = lastGroqImageData;
+        lastGroqImageData = currentImageData;
+        if (!hasImageChanged(previousImageData, currentImageData, 0.015)) {
             console.log('[GROQ] Screen has not changed significantly. Skipping auto-analysis to prevent hallucinations.');
             return;
         } else {
@@ -870,9 +876,6 @@ async function captureScreenshotForGroq(imageQuality = 'medium') {
             ipcRenderer.invoke('groq-clear-history').catch(e => console.error(e));
         }
     }
-
-    // Update last image data
-    lastGroqImageData = currentImageData;
 
     // Get quality value
     let qualityValue;
@@ -995,6 +998,13 @@ async function sendTextMessage(text) {
     const useGroq = selectedMode === 'interview';
 
     try {
+        // Plain typed questions should use the selected text model. Screen
+        // analysis remains available through the button or an explicit request.
+        if (useGroq && !requiresScreenContext(text)) {
+            cheddar.setStatus('Thinking...');
+            return await ipcRenderer.invoke('groq-generate-response', { message: text.trim(), imageBase64: null });
+        }
+        cheddar.setStatus('Capturing screen...');
         // Capture screenshot and get base64 data
         console.log(`Capturing screenshot with text message (${useGroq ? 'Groq' : 'Gemini'} mode)...`);
 
@@ -1028,6 +1038,11 @@ async function sendTextMessage(text) {
             return { success: false, error: 'Video not ready' };
         }
 
+        if (useGroq) {
+            const dimensions = captureDimensions(hiddenVideo.videoWidth, hiddenVideo.videoHeight, currentImageQuality);
+            offscreenCanvas.width = dimensions.width;
+            offscreenCanvas.height = dimensions.height;
+        }
         offscreenContext.drawImage(hiddenVideo, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
         // Get quality setting

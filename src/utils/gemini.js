@@ -931,8 +931,9 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
 
                     if (macUseGroqForSTT) {
                         // Interview mode: Send to Groq for transcription
-                        // Add audio to buffer - auto-flush will process when enough audio accumulates
+                        // VAD already committed this utterance; transcribe immediately.
                         groq.addAudioChunk(pcmBuffer);
+                        await groq.flushAudioBuffer();
                         console.log('[GROQ macOS] VAD segment added, duration:', metadata?.duration || 'unknown');
                     } else {
                         // Exam mode: Send to Gemini

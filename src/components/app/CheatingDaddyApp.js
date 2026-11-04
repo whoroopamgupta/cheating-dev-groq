@@ -500,10 +500,20 @@ export class CheatingDaddyApp extends LitElement {
             ipcRenderer.on('managed-credentials', (_, value) => localStorage.setItem('managedSession', JSON.stringify(value)));
             ipcRenderer.on('managed-usage', (_, value) => {
                 const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
-                if (user?.account_type === 'managed') { user.remaining_seconds = value.plan === 'paid' ? null : Math.floor(value.remaining_seconds); user.unlimited = value.plan === 'paid'; localStorage.setItem('loggedInUser', JSON.stringify(user)); }
-                this.setStatus(value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · Free trial`);
+                if (user?.account_type === 'managed') {
+                    user.remaining_seconds = value.plan === 'paid' ? null : Math.floor(value.remaining_seconds);
+                    user.unlimited = value.plan === 'paid';
+                    localStorage.setItem('loggedInUser', JSON.stringify(user));
+                }
+                this.setStatus(
+                    value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · Free trial`
+                );
             });
-            ipcRenderer.on('managed-session-ended', async (_, message) => { await this.handleCloseSession(); this.setStatus(message); window.alert(message); });
+            ipcRenderer.on('managed-session-ended', async (_, message) => {
+                await this.handleCloseSession();
+                this.setStatus(message);
+                window.alert(message);
+            });
             ipcRenderer.invoke('legacy-auth', localStorage.getItem('legacySession'));
             const savedManaged = localStorage.getItem('managedSession');
             if (savedManaged) ipcRenderer.invoke('managed-auth', JSON.parse(savedManaged)).catch(() => this.handleLogout());
@@ -743,7 +753,6 @@ export class CheatingDaddyApp extends LitElement {
             }
             this._awaitingNewResponse = false;
             this._currentResponseIsComplete = false;
-            console.log('[setResponse] Pushed new response:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
         } else if (!this._currentResponseIsComplete && !isFillerResponse && this.responses.length > 0) {
             // For substantial responses, update the last one (streaming behavior)
             // Only update if the current response is not marked as complete
@@ -752,7 +761,6 @@ export class CheatingDaddyApp extends LitElement {
             if (this._sessionQuestions.length > 0) {
                 this._sessionQuestions[this._sessionQuestions.length - 1].response = response;
             }
-            console.log('[setResponse] Updated last response:', response);
         } else {
             // For filler responses or when current response is complete, add as new
             this.responses = [...this.responses, response];
@@ -767,7 +775,6 @@ export class CheatingDaddyApp extends LitElement {
                 this.currentResponseIndex = this.responses.length - 1;
             }
             this._currentResponseIsComplete = false;
-            console.log('[setResponse] Added response as new:', response, isViewingLatest ? '(navigated to new)' : '(preserved position)');
         }
         this.shouldAnimateResponse = true;
         this.requestUpdate();
@@ -1444,8 +1451,8 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
                 if (refreshRes.ok) {
                     const data = await refreshRes.json();
                     if (data.legacy_token) {
-                        localStorage.setItem('legacySession',data.legacy_token);
-                        await window.require('electron').ipcRenderer.invoke('legacy-auth',data.legacy_token);
+                        localStorage.setItem('legacySession', data.legacy_token);
+                        await window.require('electron').ipcRenderer.invoke('legacy-auth', data.legacy_token);
                     }
                     if (data && data.user) {
                         refreshedUser = data.user;
