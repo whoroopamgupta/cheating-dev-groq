@@ -385,11 +385,16 @@ export class MainView extends LitElement {
         }
     }
 
-    handleStartClick() {
+    async handleStartClick() {
         if (this.isInitializing) {
             return;
         }
-        this.onStart();
+        this.isInitializing = true;
+        try {
+            await this.onStart();
+        } finally {
+            this.isInitializing = false;
+        }
     }
 
     handleAPIKeyHelpClick() {
@@ -529,8 +534,12 @@ export class MainView extends LitElement {
                     class="${this.showApiKeyError ? 'api-key-error' : ''}"
                     ?disabled=${apiKeyIncluded}
                 />
-                <button @click=${this.handleStartClick} class="start-button ${this.isInitializing ? 'initializing' : ''}">
-                    ${this.getStartButtonText()}
+                <button
+                    @click=${this.handleStartClick}
+                    ?disabled=${this.isInitializing}
+                    class="start-button ${this.isInitializing ? 'initializing' : ''}"
+                >
+                    ${this.isInitializing ? 'Starting session…' : this.getStartButtonText()}
                 </button>
             </div>
             ${

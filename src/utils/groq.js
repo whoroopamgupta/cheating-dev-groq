@@ -14,7 +14,7 @@ let isProcessing = false;
 let groqApiKey = null;
 
 // Minimum audio duration in seconds before sending to Groq (to avoid sending tiny clips)
-const MIN_AUDIO_DURATION_SECONDS = 1.5; // Reduced since we now only buffer speech
+const MIN_AUDIO_DURATION_SECONDS = 0.5; // Short questions must not wait for the next utterance.
 const SAMPLE_RATE = 24000; // 24kHz as used in the app
 const BYTES_PER_SAMPLE = 2; // 16-bit PCM
 
@@ -28,12 +28,12 @@ const SPEECH_RMS_THRESHOLD = 500; // RMS above this is considered speech
 // Speech state tracking for smarter flush
 let lastSpeechTime = 0; // Timestamp of last detected speech
 let isSpeaking = false; // Currently in speech segment
-const SILENCE_AFTER_SPEECH_MS = 1500; // Wait 1.5 seconds of silence after speech before flushing
+const SILENCE_AFTER_SPEECH_MS = 900; // Allow natural pauses without an extra 1.5s delay.
 const POST_SPEECH_CONTEXT_MS = 500; // Include 0.5s of silence after speech ends
 
 // Periodic check timer
 let checkTimer = null;
-const CHECK_INTERVAL_MS = 500; // Check every 500ms for faster response
+const CHECK_INTERVAL_MS = 100;
 
 function sendToRenderer(channel, data) {
     const windows = BrowserWindow.getAllWindows();
@@ -320,13 +320,6 @@ async function checkAndFlush() {
         isSpeaking = false;
     }
 
-    // Log status occasionally
-    if (speechDuration >= 1) {
-        console.log(
-            `[GROQ] Speech buffer: ${speechDuration.toFixed(1)}s | Silence: ${(timeSinceSpeech / 1000).toFixed(1)}s | Speaking: ${isSpeaking}`
-        );
-    }
-
     // Flush conditions:
     // 1. Have enough audio AND sustained silence after speech
     // 2. Buffer too large (>20s) - force flush
@@ -400,16 +393,21 @@ async function processAudioBuffer() {
             sendToRenderer('groq-transcription', transcription);
         }
 
-        // Reset speech tracking state for next utterance
-        isSpeaking = false;
-        lastSpeechTime = 0;
+        // Audio may have arrived while transcription was in flight. Preserve
+        // that utterance's timing so it is not flushed in the middle of speech.
+        if (speechBuffer.length === 0) {
+            isSpeaking = false;
+            lastSpeechTime = 0;
+        }
 
         return transcription;
     } catch (error) {
         console.error('[GROQ] Error processing audio:', error);
         // Reset state even on error
-        isSpeaking = false;
-        lastSpeechTime = 0;
+        if (speechBuffer.length === 0) {
+            isSpeaking = false;
+            lastSpeechTime = 0;
+        }
         return null;
     } finally {
         isProcessing = false;
@@ -544,14 +542,14 @@ function setLlamaConfig(profile, systemPrompt, model = 'gpt-oss-120b') {
 async function normalizeResumeText(rawText, providedApiKey = null) {
     return new Promise((resolve, reject) => {
         const apiKeyToUse = providedApiKey || groqApiKey;
-        
+
         if (!apiKeyToUse) {
             reject(new Error('Groq API key not provided or initialized'));
             return;
         }
 
         console.log('[GROQ] Normalizing resume text. Length:', rawText.length);
-        
+
         // Use the default text model for normalization
         const modelToUse = currentLlamaModel || GROQ_MODELS['gpt-oss-120b'];
 
@@ -570,7 +568,7 @@ RULES:
 
         const messages = [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: safeText }
+            { role: 'user', content: safeText },
         ];
 
         const payload = JSON.stringify({
@@ -580,21 +578,26 @@ RULES:
             max_completion_tokens: 1024,
         });
 
-        if (apiKeyToUse === 'managed-account') { resolve(rawText); return; } // Resume context stays local until the metered interview.
+        if (apiKeyToUse === 'managed-account') {
+            resolve(rawText);
+            return;
+        } // Resume context stays local until the metered interview.
         const options = {
             hostname: 'api.groq.com',
             path: '/openai/v1/chat/completions',
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKeyToUse}`,
+                Authorization: `Bearer ${apiKeyToUse}`,
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payload)
-            }
+                'Content-Length': Buffer.byteLength(payload),
+            },
         };
 
-        const req = https.request(options, (res) => {
+        const req = https.request(options, res => {
             let data = '';
-            res.on('data', (chunk) => { data += chunk; });
+            res.on('data', chunk => {
+                data += chunk;
+            });
             res.on('end', () => {
                 try {
                     const response = JSON.parse(data);
@@ -614,7 +617,7 @@ RULES:
             });
         });
 
-        req.on('error', (e) => {
+        req.on('error', e => {
             console.error('[GROQ] Request error:', e);
             reject(e);
         });
@@ -691,7 +694,7 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             messages: messages,
             temperature: isVisionRequest ? 0.1 : 0.6, // Enforce strict logic for exams, allow slight creativity for voice
             max_tokens: 4096,
-            stream: true, 
+            stream: true,
         };
 
         // Groq reasoning models output thinking tokens.
@@ -721,8 +724,13 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
         let fullResponse = '';
         let buffer = '';
         let errorBody = ''; // Accumulate raw response for non-200 errors
+        let lastRenderAt = 0;
+        let streamFailed = false;
 
         const req = https.request(options, res => {
+            res.setEncoding('utf8');
+            res.on('error', reject);
+            res.on('aborted', () => reject(new Error('Response stream interrupted')));
             res.on('data', chunk => {
                 const chunkStr = chunk.toString();
 
@@ -746,11 +754,18 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
                         }
                         try {
                             const parsed = JSON.parse(data);
+                            if (parsed.error) {
+                                streamFailed = true;
+                                continue;
+                            }
                             const content = parsed.choices?.[0]?.delta?.content;
                             if (content) {
                                 fullResponse += content;
                                 // Stream to renderer for live display
-                                sendToRenderer('update-response', fullResponse);
+                                if (Date.now() - lastRenderAt >= 50) {
+                                    sendToRenderer('update-response', fullResponse);
+                                    lastRenderAt = Date.now();
+                                }
                             }
                         } catch (e) {
                             // Ignore parse errors for incomplete chunks
@@ -760,6 +775,11 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             });
 
             res.on('end', () => {
+                if (streamFailed) {
+                    sendToRenderer('update-status', 'Response interrupted. Please retry.');
+                    reject(new Error('Response stream interrupted'));
+                    return;
+                }
                 if (res.statusCode === 200) {
                     // Process any remaining buffer
                     if (buffer.startsWith('data: ') && buffer.slice(6) !== '[DONE]') {
@@ -853,6 +873,8 @@ async function generateWithLlama(userMessage, imageBase64 = null) {
             sendToRenderer('update-status', 'Error');
             reject(e);
         });
+
+        req.setTimeout(30000, () => req.destroy(new Error('AI response timed out. Please retry.')));
 
         req.write(requestBody);
         req.end();

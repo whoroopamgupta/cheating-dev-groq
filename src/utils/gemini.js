@@ -826,7 +826,7 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
     const { app } = require('electron');
     const path = require('path');
     const fs = require('fs');
-    const { execSync } = require('child_process');
+    const execFileAsync = require('util').promisify(require('child_process').execFile);
 
     const helperAppDir = app.isPackaged ? path.join(process.resourcesPath, 'AudioHelper.app') : path.join(__dirname, '../assets', 'AudioHelper.app');
     const helperAppBinary = path.join(helperAppDir, 'Contents', 'MacOS', 'SystemAudioDump');
@@ -848,9 +848,9 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
                 // Strip quarantine attribute if present
                 try {
                     if (fs.existsSync(helperAppDir)) {
-                        execSync(`xattr -rd com.apple.quarantine "${helperAppDir}" 2>/dev/null`, { stdio: 'ignore' });
+                        await execFileAsync('xattr', ['-rd', 'com.apple.quarantine', helperAppDir], { timeout: 2000 });
                     }
-                    execSync(`xattr -d com.apple.quarantine "${systemAudioPath}" 2>/dev/null`, { stdio: 'ignore' });
+                    await execFileAsync('xattr', ['-d', 'com.apple.quarantine', systemAudioPath], { timeout: 2000 });
                 } catch (_) {
                     // Ignore if quarantine attribute is not present
                 }

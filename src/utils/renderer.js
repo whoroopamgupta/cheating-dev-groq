@@ -328,20 +328,23 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             console.log(`[macOS] Mode: ${selectedMode}, Using Groq for STT: ${useGroqForSTT}`);
 
             // Start macOS audio capture with VAD settings and Groq mode
-            const audioResult = await ipcRenderer.invoke('start-macos-audio', vadEnabled, vadMode, useGroqForSTT);
-            if (!audioResult.success) {
-                throw new Error('Failed to start macOS audio capture: ' + audioResult.error);
-            }
-
-            // Get screen capture for screenshots
-            mediaStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    frameRate: 1,
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                },
-                audio: false, // Don't use browser audio on macOS
-            });
+            // Screen permission/capture and audio-helper setup are independent.
+            // Settle both before cleanup so a late result cannot leak capture.
+            const [audioSetup, screenSetup] = await Promise.allSettled([
+                ipcRenderer.invoke('start-macos-audio', vadEnabled, vadMode, useGroqForSTT),
+                navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        frameRate: 1,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    },
+                    audio: false, // Don't use browser audio on macOS
+                }),
+            ]);
+            if (screenSetup.status === 'fulfilled') mediaStream = screenSetup.value;
+            if (audioSetup.status === 'rejected') throw audioSetup.reason;
+            if (!audioSetup.value.success) throw new Error('Failed to start macOS audio capture: ' + audioSetup.value.error);
+            if (screenSetup.status === 'rejected') throw screenSetup.reason;
 
             console.log('macOS screen capture started - audio handled by SystemAudioDump');
         } else if (isLinux) {

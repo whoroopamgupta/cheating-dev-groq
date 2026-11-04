@@ -71,9 +71,12 @@ function createWindow(sendToRenderer, geminiSessionRef, randomNames = null) {
     const { session, desktopCapturer } = require('electron');
     session.defaultSession.setDisplayMediaRequestHandler(
         (request, callback) => {
-            desktopCapturer.getSources({ types: ['screen'] }).then(sources => {
-                callback({ video: sources[0], audio: 'loopback' });
-            });
+            desktopCapturer
+                .getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+                .then(sources => {
+                    callback({ video: sources[0], audio: 'loopback' });
+                })
+                .catch(() => callback({}));
         },
         { useSystemPicker: true }
     );
