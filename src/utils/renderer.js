@@ -5,12 +5,14 @@ const { requiresScreenContext, captureDimensions } = require(path.join(__dirname
 
 // Import VAD functionality
 let VADProcessor;
+let shouldFlushAudioSegment = metadata => metadata?.streaming !== true;
 try {
     // __dirname resolves to 'src' folder when loaded from index.html
     // So we need to go to 'utils/vad.js'
     const vadPath = path.join(__dirname, 'utils', 'vad.js');
     const vad = require(vadPath);
     VADProcessor = vad.VADProcessor;
+    shouldFlushAudioSegment = vad.shouldFlushAudioSegment;
     console.log('✅ VAD module loaded successfully from:', vadPath);
 } catch (error) {
     console.warn('❌ VAD module not available:', error);
@@ -519,8 +521,10 @@ function setupLinuxSystemAudioProcessing() {
 
                             if (useGroqForSTT) {
                                 // Interview mode: Send to Groq for transcription
-                                // VAD already committed this utterance; transcribe immediately.
-                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data, committed: true });
+                                // Automatic mode emits streaming frames; only a
+                                // completed VAD/manual segment should force flush.
+                                const committed = shouldFlushAudioSegment(metadata);
+                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data, committed });
                                 console.log('[GROQ] VAD segment added, duration:', metadata?.duration || 'unknown');
                             } else {
                                 // Exam mode: Send to Gemini
@@ -642,8 +646,10 @@ function setupWindowsLoopbackProcessing() {
 
                             if (useGroqForSTT) {
                                 // Interview mode: Send to Groq for transcription
-                                // VAD already committed this utterance; transcribe immediately.
-                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data, committed: true });
+                                // Automatic mode emits streaming frames; only a
+                                // completed VAD/manual segment should force flush.
+                                const committed = shouldFlushAudioSegment(metadata);
+                                await ipcRenderer.invoke('groq-add-audio', { data: base64Data, committed });
                                 console.log('[GROQ] VAD segment added, duration:', metadata?.duration || 'unknown');
                             } else {
                                 // Exam mode: Send to Gemini

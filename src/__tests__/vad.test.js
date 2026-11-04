@@ -1,4 +1,4 @@
-const { VADState, VAD_CONFIG } = require('../utils/vad');
+const { VADState, VAD_CONFIG, shouldFlushAudioSegment } = require('../utils/vad');
 
 describe('VAD Module Tests', () => {
     describe('Configuration', () => {
@@ -44,6 +44,12 @@ describe('VAD Module Tests', () => {
     });
 
     describe('VAD Modes', () => {
+        it('buffers automatic streaming frames and flushes only completed utterances', () => {
+            expect(shouldFlushAudioSegment({ streaming: true })).toBe(false);
+            expect(shouldFlushAudioSegment({ duration: 900 })).toBe(true);
+            expect(shouldFlushAudioSegment()).toBe(true);
+        });
+
         it('should support automatic mode', () => {
             // Automatic mode: continuous speech detection with auto-commit
             const automaticMode = 'automatic';

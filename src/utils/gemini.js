@@ -3,7 +3,7 @@ const { BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const { saveDebugAudio } = require('../audioUtils');
 const { getSystemPrompt } = require('./prompts');
-const { VADProcessor } = require('./vad');
+const { VADProcessor, shouldFlushAudioSegment } = require('./vad');
 const groq = require('./groq');
 const { formatSpeakerResults } = require('./speakerFormat');
 
@@ -931,9 +931,12 @@ async function startMacOSAudioCapture(geminiSessionRef, vadEnabled = false, vadM
 
                     if (macUseGroqForSTT) {
                         // Interview mode: Send to Groq for transcription
-                        // VAD already committed this utterance; transcribe immediately.
+                        // Automatic mode streams small frames through this
+                        // callback. Only force transcription for a real
+                        // manual/VAD commit; flushing every streaming frame
+                        // discards it before the 0.5s minimum is reached.
                         groq.addAudioChunk(pcmBuffer);
-                        await groq.flushAudioBuffer();
+                        if (shouldFlushAudioSegment(metadata)) await groq.flushAudioBuffer();
                         console.log('[GROQ macOS] VAD segment added, duration:', metadata?.duration || 'unknown');
                     } else {
                         // Exam mode: Send to Gemini

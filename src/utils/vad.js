@@ -22,6 +22,10 @@ const VAD_CONFIG = {
     noiseGateThreshold: 0.015, // Minimum amplitude to consider as potential speech (LOWERED for better detection)
 };
 
+function shouldFlushAudioSegment(metadata) {
+    return metadata?.streaming !== true;
+}
+
 class VADProcessor {
     constructor(onCommit, onStateChange = null, mode = 'automatic') {
         this.onCommit = onCommit; // Callback to send audio segment
@@ -538,5 +542,6 @@ class VADProcessor {
 module.exports = {
     VADProcessor,
     VADState,
-    VAD_CONFIG
+    VAD_CONFIG,
+    shouldFlushAudioSegment,
 };
