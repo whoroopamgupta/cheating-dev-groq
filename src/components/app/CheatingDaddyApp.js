@@ -517,7 +517,7 @@ export class CheatingDaddyApp extends LitElement {
                     localStorage.setItem('loggedInUser', JSON.stringify(user));
                 }
                 this.setStatus(
-                    value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · Free trial`
+                    value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · Free access`
                 );
             });
             ipcRenderer.on('managed-session-ended', async (_, message) => {
@@ -1097,7 +1097,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             const message = error?.message || 'Could not start the interview session.';
             this.setStatus(message);
             if (/interview time is used up/i.test(message)) {
-                this.homeError = 'Your 15-minute interview trial has been used. Upgrade to continue practicing.';
+                this.homeError = 'Your 10-minute interview trial has been used. Upgrade to continue practicing.';
                 this.currentView = 'main';
                 this.requestUpdate();
             } else {

@@ -19,7 +19,7 @@ describe('managed account leases',()=>{
         vi.useFakeTimers();const h=harness();
         h.fetch.mockResolvedValueOnce(response({user:{}}));
         await h.handlers['managed-auth']({}, {access_token:'token',refresh_token:'refresh'});
-        h.fetch.mockResolvedValueOnce(response({session_id:'session',lease_seconds:30,remaining_seconds:900}));
+        h.fetch.mockResolvedValueOnce(response({session_id:'session',lease_seconds:30,remaining_seconds:600}));
         await h.handlers['managed-start']({},'interview');
         expect(h.api.proxyOptions().headers['X-Session-Id']).toBe('session');
         h.fetch.mockResolvedValueOnce({ok:false,status:503,json:async()=>({error:'Unavailable'})});
@@ -42,7 +42,7 @@ const login = async h => {
     h.fetch.mockResolvedValueOnce(response({user:{}}));
     await h.handlers['managed-auth']({}, {access_token:'token',refresh_token:'refresh'});
 };
-const lease = id => ({session_id:id,lease_seconds:30,remaining_seconds:900,plan:'trial'});
+const lease = id => ({session_id:id,lease_seconds:30,remaining_seconds:600,plan:'trial'});
 describe('managed session lifecycle races',()=>{
     it('does not let a late renewal replace a restarted session',async()=>{
         vi.useFakeTimers(); const h=harness(); await login(h);

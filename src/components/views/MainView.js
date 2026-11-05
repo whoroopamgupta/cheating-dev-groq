@@ -641,7 +641,9 @@ export class MainView extends LitElement {
             return 'Unlimited Access';
         }
         const remainingSeconds = Math.max(0, Number(user?.remaining_seconds) || 0);
-        return `Free Trial · ${Math.ceil(remainingSeconds / 60)}m left`;
+        const totalSeconds = Number(user?.free_total_seconds ?? user?.trial_seconds ?? 0);
+        const hasAddedAccess = totalSeconds > Math.max(0, Number(user?.trial_seconds) || 0);
+        return `${hasAddedAccess ? 'Free Access' : 'Free Trial'} · ${Math.ceil(remainingSeconds / 60)}m left`;
     }
 
     loadLayoutMode() {
