@@ -628,6 +628,7 @@ export class MainView extends LitElement {
 
     isPaidAccount(user) {
         if (!user) return false;
+        if (user.account_type === 'managed') return user.unlimited === true;
         if (user.unlimited === true || user.paid === true) return true;
 
         // Legacy subscribers do not have managed-account fields, but an active
@@ -641,6 +642,7 @@ export class MainView extends LitElement {
             return 'Unlimited Access';
         }
         const remainingSeconds = Math.max(0, Number(user?.remaining_seconds) || 0);
+        if (Number(user?.pack_remaining_seconds) > 0) return `Hourly Pack · ${Math.ceil(remainingSeconds / 60)}m left`;
         const totalSeconds = Number(user?.free_total_seconds ?? user?.trial_seconds ?? 0);
         const hasAddedAccess = totalSeconds > Math.max(0, Number(user?.trial_seconds) || 0);
         return `${hasAddedAccess ? 'Free Access' : 'Free Trial'} · ${Math.ceil(remainingSeconds / 60)}m left`;

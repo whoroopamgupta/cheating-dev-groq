@@ -314,6 +314,9 @@ export class HelpView extends LitElement {
                 if (user?.account_type === 'managed') {
                     if (user.unlimited) {
                         planDetails = `${user.plan_type || 'Paid plan'} · Unlimited while your plan is active`;
+                    } else if (Number(user.pack_remaining_seconds) > 0) {
+                        const minutes = Math.ceil(Number(user.pack_remaining_seconds) / 60);
+                        planDetails = `Hourly pack · ${minutes}m purchased time remaining`;
                     } else {
                         const configuredTotal = Number(user.free_total_seconds ?? user.trial_seconds);
                         const totalSeconds = Number.isFinite(configuredTotal) ? Math.max(0, configuredTotal) : 10 * 60;

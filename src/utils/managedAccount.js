@@ -62,7 +62,7 @@ function arm(data, startedAt) {
 async function stop() {
     generation++;
     starting = false;
-    clearInterval(heartbeat);
+    clearTimeout(heartbeat);
     clearTimeout(deadline);
     heartbeat = null;
     const old = session;
@@ -127,10 +127,17 @@ function setup() {
         } finally {
             if (current === generation) starting = false;
         }
-        let pending = false;
-        heartbeat = setInterval(async () => {
-            if (pending || !session || current !== generation) return;
-            pending = true;
+        const scheduleHeartbeat = () => {
+            if (!session || current !== generation) return;
+            const leaseMs = Number(session.lease_seconds) * 1000;
+            // A final short lease has no time left to renew. Let its deadline
+            // finish the session instead of repeatedly refunding and regranting
+            // ever smaller fractions of the last seconds.
+            if (leaseMs <= 10000) return;
+            heartbeat = setTimeout(tick, 10000);
+        };
+        const tick = async () => {
+            if (!session || current !== generation) return;
             const startedAt = Date.now(),
                 sessionId = session.session_id;
             try {
@@ -139,9 +146,10 @@ function setup() {
             } catch (error) {
                 if (current === generation) expire(error.message);
             } finally {
-                pending = false;
+                scheduleHeartbeat();
             }
-        }, 10000);
+        };
+        scheduleHeartbeat();
         return data;
     });
     ipcMain.handle('managed-stop', stop);
