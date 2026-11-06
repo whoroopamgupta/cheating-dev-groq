@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
+import { formatRemainingSeconds } from '../../utils/managedDisplay.js';
 
 export class HelpView extends LitElement {
     static styles = css`
@@ -313,10 +314,14 @@ export class HelpView extends LitElement {
                 const user = JSON.parse(loggedInUserStr);
                 if (user?.account_type === 'managed') {
                     if (user.unlimited) {
-                        planDetails = `${user.plan_type || 'Paid plan'} · Unlimited while your plan is active`;
+                        const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(user.access_until || '');
+                        const until = user.access_until ? new Date(dateOnly ? `${user.access_until}T12:00:00+05:30` : user.access_until) : null;
+                        const through = until && !Number.isNaN(until.getTime())
+                            ? until.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', ...(!dateOnly && { timeStyle: 'short' }) }) : null;
+                        const savedPack = Number(user.pack_remaining_seconds) > 0 ? ` · ${formatRemainingSeconds(user.pack_remaining_seconds)} saved pack time` : '';
+                        planDetails = `${user.plan_type || 'Paid plan'} · Unlimited while your plan is active${through ? ` · Current access through ${through}` : ''}${savedPack}`;
                     } else if (Number(user.pack_remaining_seconds) > 0) {
-                        const minutes = Math.ceil(Number(user.pack_remaining_seconds) / 60);
-                        planDetails = `Hourly pack · ${minutes}m purchased time remaining`;
+                        planDetails = `Hourly pack · ${formatRemainingSeconds(user.pack_remaining_seconds)} purchased time remaining`;
                     } else {
                         const configuredTotal = Number(user.free_total_seconds ?? user.trial_seconds);
                         const totalSeconds = Number.isFinite(configuredTotal) ? Math.max(0, configuredTotal) : 10 * 60;
