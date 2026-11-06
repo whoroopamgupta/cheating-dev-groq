@@ -16,6 +16,52 @@ describe('interactive request routing', () => {
         expect(managedStart).toBeLessThan(captureStart);
     });
 
+    it('stops the current metered session before restarting an interview', async () => {
+        const source = fs.readFileSync(path.join(__dirname, '../components/app/CheatingDaddyApp.js'), 'utf8');
+        const start = source.indexOf('async handleClearAndRestart()');
+        const end = source.indexOf('\n    handleGlobalKeydown', start);
+        expect(start).toBeGreaterThanOrEqual(0);
+        expect(end).toBeGreaterThan(start);
+
+        const events = [];
+        let releaseStop;
+        const stopped = new Promise(resolve => {
+            releaseStop = resolve;
+        });
+        const invoke = vi.fn(async channel => {
+            events.push(channel);
+            if (channel === 'managed-stop') await stopped;
+            return { success: true };
+        });
+        const context = vm.createContext({
+            window: {
+                cheddar: { stopCapture: () => events.push('capture-stop') },
+                require: () => ({ ipcRenderer: { invoke } }),
+            },
+            clearTimeout: vi.fn(),
+        });
+        const restart = vm.runInContext(`({ ${source.slice(start, end)} }).handleClearAndRestart`, context);
+        const app = {
+            _sessionQuestions: ['question'],
+            _sessionTimeoutId: 1,
+            currentView: 'assistant',
+            saveCurrentConversation: vi.fn(),
+            stopExamGroqAutoCapture: vi.fn(),
+            setStatus: vi.fn(),
+            requestUpdate: vi.fn(),
+            handleStart: vi.fn(async () => events.push('start')),
+        };
+
+        const first = restart.call(app);
+        await restart.call(app);
+        expect(events).toEqual(['capture-stop', 'managed-stop']);
+        releaseStop();
+        await first;
+        expect(events).toEqual(['capture-stop', 'managed-stop', 'close-session', 'start']);
+        expect(app.handleStart).toHaveBeenCalledTimes(1);
+        expect(app._sessionTimeoutId).toBeNull();
+    });
+
     it('sends a plain typed question without requiring capture permission or uploading a screenshot', async () => {
         const source = fs.readFileSync(path.join(__dirname, '../utils/renderer.js'), 'utf8');
         const start = source.indexOf('async function sendTextMessage(text)');

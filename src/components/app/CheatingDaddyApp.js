@@ -1272,38 +1272,58 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         }
     }
 
-    handleClearAndRestart() {
-        // Save conversation to history before clearing (if there are questions)
-        if (this._sessionQuestions.length > 0) {
-            this.saveCurrentConversation();
+    async handleClearAndRestart() {
+        if (this._restartingSession || this._startingSession) return;
+        this._restartingSession = true;
+        try {
+            // Save conversation to history before clearing (if there are questions)
+            if (this._sessionQuestions.length > 0) {
+                this.saveCurrentConversation();
+            }
+
+            // Stop exam-groq auto-capture if running
+            this.stopExamGroqAutoCapture();
+
+            // Clear the current session and responses
+            this.responses = [];
+            this.currentResponseIndex = -1;
+            this.startTime = null;
+            this._sessionQuestions = [];
+            this._currentQuestion = '';
+
+            // Stop any ongoing capture if in assistant view
+            if (this.currentView === 'assistant' && window.cheddar) {
+                window.cheddar.stopCapture();
+            }
+
+            if (this._sessionTimeoutId) {
+                clearTimeout(this._sessionTimeoutId);
+                this._sessionTimeoutId = null;
+            }
+
+            // Release the old metered lease before opening a replacement session.
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                await ipcRenderer.invoke('managed-stop');
+                await ipcRenderer.invoke('close-session');
+            }
+            this.sessionActive = false;
+
+            // Return to main view
+            this.currentView = 'main';
+            this.setStatus('Session cleared. Starting new session...');
+
+            // Request update to refresh the UI
+            this.requestUpdate();
+
+            await this.handleStart();
+        } catch (error) {
+            this.homeError = error?.message || 'Could not restart the interview session.';
+            this.setStatus(this.homeError);
+            this.requestUpdate();
+        } finally {
+            this._restartingSession = false;
         }
-
-        // Stop exam-groq auto-capture if running
-        this.stopExamGroqAutoCapture();
-
-        // Clear the current session and responses
-        this.responses = [];
-        this.currentResponseIndex = -1;
-        this.startTime = null;
-        this._sessionQuestions = [];
-        this._currentQuestion = '';
-
-        // Stop any ongoing capture if in assistant view
-        if (this.currentView === 'assistant' && window.cheddar) {
-            window.cheddar.stopCapture();
-        }
-
-        // Return to main view
-        this.currentView = 'main';
-        this.setStatus('Session cleared. Starting new session...');
-
-        // Request update to refresh the UI
-        this.requestUpdate();
-
-        // Automatically start a new session after a brief delay
-        setTimeout(() => {
-            this.handleStart();
-        }, 100);
     }
 
     handleGlobalKeydown(e) {
