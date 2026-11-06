@@ -1,7 +1,7 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
 import { getActiveApiKey, isApiKeyIncluded } from '../../utils/apiKeyResolver.js';
-import { formatRemainingSeconds } from '../../utils/managedDisplay.js';
+import { formatRemainingSeconds, managedHomeAccess } from '../../utils/managedDisplay.js';
 
 export class MainView extends LitElement {
     static styles = css`
@@ -99,17 +99,50 @@ export class MainView extends LitElement {
             flex-shrink: 0;
         }
 
-        .account-upgrade {
-            flex-shrink: 0;
+        .trial-balance {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 13px 14px;
+            border: 1px solid rgba(124, 131, 255, 0.27);
+            border-radius: 12px;
+            background: rgba(99, 102, 241, 0.09);
+        }
+
+        .trial-balance-copy {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .trial-balance-label {
+            display: block;
+            margin-bottom: 2px;
             color: #aeb5c5;
             font-size: 10px;
             font-weight: 600;
-            text-decoration: none;
-            transition: color 180ms ease;
         }
 
-        .account-upgrade:hover {
+        .trial-balance-time {
             color: #f5f6fa;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .trial-balance button {
+            flex-shrink: 0;
+            padding: 8px 11px;
+            border: 1px solid rgba(185, 191, 255, 0.35);
+            border-radius: 8px;
+            background: #5155bb;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 650;
+        }
+
+        .trial-balance button:hover {
+            background: #6366f1;
         }
 
         .session-content {
@@ -254,7 +287,8 @@ export class MainView extends LitElement {
         .start-button:focus-visible,
         .logout-button:focus-visible,
         .trial-limit button:focus-visible,
-        .account-upgrade:focus-visible,
+        .trial-balance button:focus-visible,
+        .manage-account-button:focus-visible,
         .link:focus-visible {
             outline: 2px solid #a5b4fc;
             outline-offset: 3px;
@@ -344,6 +378,24 @@ export class MainView extends LitElement {
             border-top: 1px solid rgba(255, 255, 255, 0.075);
         }
 
+        .manage-account-button {
+            flex-shrink: 0;
+            padding: 7px 9px;
+            border: 1px solid rgba(124, 131, 255, 0.27);
+            border-radius: 8px;
+            background: rgba(124, 131, 255, 0.08);
+            color: #c6caff;
+            font-size: 10px;
+            font-weight: 650;
+            white-space: nowrap;
+        }
+
+        .manage-account-button:hover {
+            border-color: rgba(165, 180, 252, 0.55);
+            background: rgba(124, 131, 255, 0.16);
+            color: #fff;
+        }
+
         .account-avatar {
             display: grid;
             place-items: center;
@@ -426,6 +478,10 @@ export class MainView extends LitElement {
             .session-primary-row {
                 gap: 12px;
             }
+
+            .trial-balance {
+                margin-top: 12px;
+            }
         }
 
         @media (max-width: 365px) {
@@ -437,6 +493,20 @@ export class MainView extends LitElement {
 
             .start-button {
                 width: 100%;
+            }
+
+            .account-footer {
+                gap: 6px;
+            }
+
+            .account-avatar {
+                display: none;
+            }
+
+            .manage-account-button,
+            .logout-button {
+                padding: 6px;
+                font-size: 9px;
             }
         }
 
@@ -459,6 +529,8 @@ export class MainView extends LitElement {
         selectedProfile: { type: String },
         sessionError: { type: String },
         onUpgrade: { type: Function },
+        onManageAccount: { type: Function },
+        accountUser: { attribute: false },
     };
 
     constructor() {
@@ -472,6 +544,8 @@ export class MainView extends LitElement {
         this.onClearAndRestart = () => {};
         this.sessionError = '';
         this.onUpgrade = () => {};
+        this.onManageAccount = () => {};
+        this.accountUser = null;
         this.boundKeydownHandler = this.handleKeydown.bind(this);
         // Load selected profile from localStorage (default to interview on first run)
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
@@ -606,6 +680,7 @@ export class MainView extends LitElement {
     }
 
     getLoggedInUser() {
+        if (this.accountUser) return this.accountUser;
         try {
             const userInfo = localStorage.getItem('loggedInUser');
             if (userInfo) {
@@ -685,24 +760,22 @@ export class MainView extends LitElement {
         };
         const profileLabel = profileNames[this.selectedProfile] || 'Job Interview';
         const hasPaidAccess = this.isPaidAccount(user);
+        const managedAccess = managedHomeAccess(user);
 
         return html`
             <div class="home-layout">
                 <section class="session-card">
                     <div class="card-topline">
                         <span class="ready-state"><span class="ready-dot"></span>Ready to assist</span>
-                        ${hasPaidAccess ? html`
+                        ${hasPaidAccess || managedAccess ? html`
                             <span class="plan-actions">
                                 <span class="plan-badge">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <circle cx="12" cy="12" r="9"></circle>
                                         <path d="M12 7v5l3 2"></path>
                                     </svg>
-                                    ${this.getCompactPlanLabel(user)}
+                                    ${managedAccess?.badge || this.getCompactPlanLabel(user)}
                                 </span>
-                                ${user?.account_type === 'managed' ? html`
-                                    <a class="account-upgrade" href="#" @click=${event => { event.preventDefault(); this.onUpgrade(); }}>Manage →</a>
-                                ` : ''}
                             </span>
                         ` : ''}
                     </div>
@@ -726,6 +799,16 @@ export class MainView extends LitElement {
                             ` : ''}
                         </div>
                         <p class="session-guidance">Your session opens in a focused window and keeps your interview context ready.</p>
+
+                        ${managedAccess?.kind === 'free' ? html`
+                            <div class="trial-balance" role="status">
+                                <span class="trial-balance-copy">
+                                    <span class="trial-balance-label">${managedAccess.title}</span>
+                                    <span class="trial-balance-time">${formatRemainingSeconds(managedAccess.remainingSeconds)}</span>
+                                </span>
+                                <button type="button" @click=${this.onUpgrade}>Upgrade →</button>
+                            </div>
+                        ` : ''}
 
                         ${this.sessionError ? html`
                             <div class="trial-limit" role="alert">
@@ -764,6 +847,7 @@ export class MainView extends LitElement {
                 </section>
 
                 <footer class="account-footer">
+                    <button type="button" class="manage-account-button" @click=${this.onManageAccount}>Manage account ↗</button>
                     <span class="account-avatar">${this.getAccountInitial()}</span>
                     <span class="account-copy">
                         <span class="account-label">Signed in as</span>

@@ -514,7 +514,9 @@ export class CheatingDaddyApp extends LitElement {
                 const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
                 const display = managedUsageView(user, value);
                 if (display.user?.account_type === 'managed') localStorage.setItem('loggedInUser', JSON.stringify(display.user));
+                if (display.user?.unlimited || Number(display.user?.remaining_seconds) > 0) this.homeError = '';
                 this.setStatus(display.status);
+                this.requestUpdate();
             });
             ipcRenderer.on('managed-session-ended', async (_, message) => {
                 await this.handleCloseSession();
@@ -594,6 +596,10 @@ export class CheatingDaddyApp extends LitElement {
         }
 
         window.addEventListener('show-toast', e => this.showToast(e.detail));
+        this._refreshHomeOnFocus = () => {
+            if (this.currentView === 'main' && this.getHomeAccount()?.account_type === 'managed') void this.validateUserInBackground();
+        };
+        window.addEventListener('focus', this._refreshHomeOnFocus);
     }
 
     showToast(message) {
@@ -643,6 +649,7 @@ export class CheatingDaddyApp extends LitElement {
             clearInterval(this._heartbeatIntervalId);
             this._heartbeatIntervalId = null;
         }
+        window.removeEventListener('focus', this._refreshHomeOnFocus);
     }
 
     setStatus(text) {
@@ -901,6 +908,7 @@ export class CheatingDaddyApp extends LitElement {
         }
         this.sessionActive = false;
         this.currentView = 'main';
+        if (this.getHomeAccount()?.account_type === 'managed') void this.validateUserInBackground();
 
         // Clear session data
         this._sessionQuestions = [];
@@ -1364,6 +1372,7 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
     handleBackClick() {
         this.currentView = 'main';
         this.requestUpdate();
+        if (this.getHomeAccount()?.account_type === 'managed') void this.validateUserInBackground();
     }
 
     // Help view event handlers
@@ -1471,6 +1480,8 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             if (loggedInUser.account_type === 'managed') {
                 const { user } = await window.require('electron').ipcRenderer.invoke('managed-account');
                 localStorage.setItem('loggedInUser', JSON.stringify(user));
+                if (user.unlimited || Number(user.remaining_seconds) > 0) this.homeError = '';
+                this.requestUpdate();
                 return;
             }
             let refreshedUser = null;
@@ -1581,6 +1592,14 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
         }
     }
 
+    getHomeAccount() {
+        try {
+            return JSON.parse(localStorage.getItem('loggedInUser') || 'null');
+        } catch {
+            return null;
+        }
+    }
+
     renderCurrentView() {
         // Only re-render the view if it hasn't been cached or if critical properties changed
         const viewKey = `${this.currentView}-${this.selectedProfile}-${this.selectedLanguage}`;
@@ -1606,13 +1625,15 @@ Keep the same structured format but go DEEPER with more detail, more segments, a
             case 'main':
                 return html`
                     <main-view
+                        .accountUser=${this.getHomeAccount()}
                         .onStart=${() => this.handleStart()}
                         .onAPIKeyHelp=${() => this.handleAPIKeyHelp()}
                         .onLayoutModeChange=${layoutMode => this.handleLayoutModeChange(layoutMode)}
                         .onClearAndRestart=${() => this.handleClearAndRestart()}
                         .onLogout=${() => this.handleLogout()}
                         .sessionError=${this.homeError}
-                        .onUpgrade=${() => window.require('electron').ipcRenderer.invoke('open-external', 'https://www.interviewcracked.com/account')}
+                        .onUpgrade=${() => this.handleExternalLinkClick('https://www.interviewcracked.com/plans')}
+                        .onManageAccount=${() => this.handleExternalLinkClick('https://www.interviewcracked.com/account')}
                     ></main-view>
                 `;
 

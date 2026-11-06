@@ -1,7 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { managedUsageView } from '../utils/managedDisplay.js';
+import { managedHomeAccess, managedUsageView } from '../utils/managedDisplay.js';
 
 describe('managed account balance flow', () => {
+    it('shows the exact free trial balance on Home, including zero remaining', () => {
+        const trial = { account_type: 'managed', trial_seconds: 600, free_total_seconds: 600, remaining_seconds: 417, pack_remaining_seconds: 0 };
+        expect(managedHomeAccess(trial)).toEqual({
+            kind: 'free',
+            remainingSeconds: 417,
+            title: 'Free trial remaining',
+            badge: 'Free Trial · 6m 57s left',
+        });
+        expect(managedHomeAccess({ ...trial, remaining_seconds: 0 }).badge).toBe('Free Trial · 0m 0s left');
+    });
+
+    it('keeps paid and purchased balances out of the free trial display', () => {
+        const base = { account_type: 'managed', trial_seconds: 600, free_total_seconds: 600, remaining_seconds: 600 };
+        expect(managedHomeAccess({ ...base, pack_remaining_seconds: 10800 })).toEqual({
+            kind: 'pack',
+            badge: 'Hourly Pack · 3h 0m 0s left',
+        });
+        expect(managedHomeAccess({ ...base, unlimited: true })).toEqual({ kind: 'unlimited', badge: 'Unlimited Access' });
+        expect(managedHomeAccess({ account_type: 'legacy', remaining_seconds: 600 })).toBeNull();
+    });
+
     it('keeps the purchased balance separate from the ten-minute free trial', () => {
         const initial = { account_type: 'managed', trial_seconds: 600, plan_type: 'Free trial' };
         const started = managedUsageView(initial, {

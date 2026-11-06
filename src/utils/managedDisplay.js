@@ -6,6 +6,25 @@ export function formatRemainingSeconds(value) {
     return `${hours ? `${hours}h ` : ''}${minutes}m ${seconds}s`;
 }
 
+export function managedHomeAccess(user) {
+    if (user?.account_type !== 'managed') return null;
+    if (user.unlimited === true) return { kind: 'unlimited', badge: 'Unlimited Access' };
+
+    const packSeconds = Math.max(0, Math.floor(Number(user.pack_remaining_seconds) || 0));
+    if (packSeconds > 0) return { kind: 'pack', badge: `Hourly Pack · ${formatRemainingSeconds(packSeconds)} left` };
+
+    const remainingSeconds = Math.max(0, Math.floor(Number(user.remaining_seconds) || 0));
+    const trialSeconds = Math.max(0, Math.floor(Number(user.trial_seconds) || 0));
+    const freeTotalSeconds = Math.max(0, Math.floor(Number(user.free_total_seconds ?? trialSeconds) || 0));
+    const hasAddedAccess = freeTotalSeconds > trialSeconds;
+    return {
+        kind: 'free',
+        remainingSeconds,
+        title: hasAddedAccess ? 'Free access remaining' : 'Free trial remaining',
+        badge: `${hasAddedAccess ? 'Free Access' : 'Free Trial'} · ${formatRemainingSeconds(remainingSeconds)} left`,
+    };
+}
+
 export function managedUsageView(user, value) {
     const packSeconds = Math.max(0, Math.floor(Number(value.pack_remaining_seconds) || 0));
     const nextUser =
