@@ -847,7 +847,9 @@ export class MainView extends LitElement {
                 </section>
 
                 <footer class="account-footer">
-                    <button type="button" class="manage-account-button" @click=${this.onManageAccount}>Manage account ↗</button>
+                    ${user?.account_type === 'managed' ? html`
+                        <button type="button" class="manage-account-button" @click=${this.onManageAccount}>Manage account ↗</button>
+                    ` : ''}
                     <span class="account-avatar">${this.getAccountInitial()}</span>
                     <span class="account-copy">
                         <span class="account-label">Signed in as</span>

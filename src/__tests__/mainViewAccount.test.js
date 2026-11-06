@@ -43,4 +43,12 @@ describe('Home account controls', () => {
         expect(view.shadowRoot.querySelector('.trial-balance')).toBeNull();
         expect(view.shadowRoot.textContent).toContain('Unlimited Access');
     });
+
+    it('does not send legacy accounts to the managed-account dashboard', async () => {
+        localStorage.setItem('loggedInUser', JSON.stringify({ account_type: 'legacy', email: 'legacy@example.com', paid: true }));
+        const view = document.createElement('main-view');
+        document.body.append(view);
+        await view.updateComplete;
+        expect(view.shadowRoot.querySelector('.manage-account-button')).toBeNull();
+    });
 });
