@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { isPlanExpired } from '../../utils/dateUtils.js';
+import { managedUsageView } from '../../utils/managedDisplay.js';
 import { getActiveApiKey, isApiKeyIncluded, clearCachedApiKeys } from '../../utils/apiKeyResolver.js';
 import { AppHeader } from './AppHeader.js';
 import { MainView } from '../views/MainView.js';
@@ -511,17 +512,9 @@ export class CheatingDaddyApp extends LitElement {
             ipcRenderer.on('managed-credentials', (_, value) => localStorage.setItem('managedSession', JSON.stringify(value)));
             ipcRenderer.on('managed-usage', (_, value) => {
                 const user = JSON.parse(localStorage.getItem('loggedInUser') || 'null');
-                if (user?.account_type === 'managed') {
-                    user.remaining_seconds = value.plan === 'paid' ? null : Math.floor(value.remaining_seconds);
-                    user.unlimited = value.plan === 'paid';
-                    if (value.plan === 'pack') user.pack_remaining_seconds = Math.floor(value.remaining_seconds);
-                    if (value.plan === 'trial') user.pack_remaining_seconds = 0;
-                    if (value.plan === 'pack') user.plan_type = 'Hourly pack';
-                    localStorage.setItem('loggedInUser', JSON.stringify(user));
-                }
-                this.setStatus(
-                    value.plan === 'paid' ? 'Unlimited paid access' : `${Math.ceil(value.remaining_seconds / 60)} min remaining · ${value.plan === 'pack' ? 'Hourly pack' : 'Free access'}`
-                );
+                const display = managedUsageView(user, value);
+                if (display.user?.account_type === 'managed') localStorage.setItem('loggedInUser', JSON.stringify(display.user));
+                this.setStatus(display.status);
             });
             ipcRenderer.on('managed-session-ended', async (_, message) => {
                 await this.handleCloseSession();
